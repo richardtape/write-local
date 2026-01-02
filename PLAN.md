@@ -78,6 +78,19 @@
     publishedAt: 'timestamp | null',
     status: 'draft | published'
   },
+  images: {
+    id: 'uuid',
+    postId: 'uuid', // Foreign key to posts
+    file: Blob, // Original image file
+    filename: 'string',
+    type: 'string', // MIME type
+    size: 'number', // bytes
+    width: 'number',
+    height: 'number',
+    caption: 'string',
+    alt: 'string',
+    createdAt: 'timestamp'
+  },
   themes: {
     id: 'string',
     name: 'string',
@@ -135,8 +148,10 @@ write-local/
 │   │   └── spacer.js           # Custom spacing block
 │   ├── exporter/
 │   │   ├── html-generator.js   # Render EditorJS to HTML
+│   │   ├── markdown-generator.js # Render EditorJS to Markdown
 │   │   ├── template.js         # HTML template structure
-│   │   └── bundler.js          # Bundle HTML + CSS + assets
+│   │   ├── bundler.js          # Bundle HTML + CSS + assets (ZIP)
+│   │   └── image-optimizer.js  # Optimize images for export
 │   ├── themes/
 │   │   ├── default.css         # Default minimal theme
 │   │   ├── serif.css           # Alternative serif theme
@@ -309,15 +324,99 @@ function applyTheme(themeId) {
 }
 ```
 
-### 3.4 Static HTML Export
+### 3.4 Static HTML & Markdown Export
+
+#### Image Handling Strategy
+
+**In the Editor:**
+```javascript
+// User adds image via file picker
+<input type="file" accept="image/*" />
+
+// Store as Blob in IndexedDB
+const imageFile = event.target.files[0];
+const imageId = nanoid();
+
+// Create Object URL for instant preview (no encoding overhead)
+const previewURL = URL.createObjectURL(imageFile);
+
+// Store in IndexedDB
+await db.images.add({
+  id: imageId,
+  postId: currentPost.id,
+  file: imageFile,           // Store Blob directly
+  filename: imageFile.name,
+  type: imageFile.type,
+  size: imageFile.size,
+  caption: '',
+  alt: ''
+});
+
+// Reference in EditorJS block
+{
+  type: 'image',
+  data: {
+    imageId: imageId,        // Reference to images table
+    previewURL: previewURL,  // For display in editor
+    caption: '',
+    alt: ''
+  }
+}
+```
+
+**Performance Benefits:**
+- ✅ No base64 encoding (instant preview)
+- ✅ No blocking of main thread
+- ✅ Works in all browsers (100% support)
+- ✅ Full offline capability
+
+**On Export - Image Optimization:**
+```javascript
+// Optimize images before export
+async function optimizeImage(blob, options = {}) {
+  const {
+    maxWidth = 2000,
+    maxHeight = 2000,
+    quality = 0.85,
+    format = 'webp'
+  } = options;
+
+  // Load image
+  const img = await createImageBitmap(blob);
+
+  // Calculate dimensions (maintain aspect ratio)
+  const scale = Math.min(1, maxWidth / img.width, maxHeight / img.height);
+  const width = Math.floor(img.width * scale);
+  const height = Math.floor(img.height * scale);
+
+  // Resize on canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, width, height);
+
+  // Convert to optimized format (WebP)
+  return new Promise(resolve => {
+    canvas.toBlob(resolve, `image/${format}`, quality);
+  });
+}
+```
 
 **Export Process:**
 
-1. **Get post data from IndexedDB**
-2. **Render EditorJS blocks to HTML**
-3. **Bundle with theme CSS**
-4. **Generate standalone HTML file**
-5. **Download or deploy**
+**1. ZIP Export (Recommended - Default)**
+```
+my-blog-post.zip
+├── index.html          # Clean HTML with relative image paths
+├── index.md            # Markdown version
+├── images/
+│   ├── image-1.webp    # Optimized images
+│   └── image-2.webp
+└── css/
+    └── theme.css       # Theme styles
+```
 
 **HTML Template:**
 ```html
@@ -327,16 +426,7 @@ function applyTheme(themeId) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${post.title}</title>
-  <style>
-    /* Inline base CSS variables */
-    ${baseCss}
-
-    /* Inline theme CSS */
-    ${themeCss}
-
-    /* Inline content styles */
-    ${contentCss}
-  </style>
+  <link rel="stylesheet" href="./css/theme.css">
 </head>
 <body>
   <article class="post-content">
@@ -347,17 +437,30 @@ function applyTheme(themeId) {
 </html>
 ```
 
-**Block Rendering:**
+**Markdown Template:**
+```markdown
+# ${post.title}
+
+${renderedMarkdownBlocks}
+```
+
+**2. Single-File HTML Export (Optional)**
+- Small images (<10KB) as base64
+- Warning about performance impact
+- Use case: Email newsletters, portable archives
+
+**Block Rendering to HTML:**
 ```javascript
-// Convert EditorJS blocks to HTML
-function renderBlock(block) {
+function renderBlockToHTML(block, images) {
   switch (block.type) {
     case 'paragraph':
       return `<p>${block.data.text}</p>`;
     case 'header':
       return `<h${block.data.level}>${block.data.text}</h${block.data.level}>`;
     case 'image':
-      return `<img src="${block.data.file.url}" alt="${block.data.caption || ''}">`;
+      const image = images.find(img => img.id === block.data.imageId);
+      return `<img src="./images/${image.filename}" alt="${block.data.alt || ''}" />
+              ${block.data.caption ? `<figcaption>${block.data.caption}</figcaption>` : ''}`;
     case 'embed':
       if (block.data.service === 'youtube') {
         return `<div class="embed-youtube">
@@ -369,8 +472,93 @@ function renderBlock(block) {
 }
 ```
 
+**Block Rendering to Markdown:**
+```javascript
+function renderBlockToMarkdown(block, images) {
+  switch (block.type) {
+    case 'paragraph':
+      return `${block.data.text}\n\n`;
+    case 'header':
+      return `${'#'.repeat(block.data.level)} ${block.data.text}\n\n`;
+    case 'image':
+      const image = images.find(img => img.id === block.data.imageId);
+      return `![${block.data.alt || ''}](./images/${image.filename})\n\n`;
+    case 'list':
+      const marker = block.data.style === 'ordered' ? '1.' : '-';
+      return block.data.items.map(item => `${marker} ${item}`).join('\n') + '\n\n';
+    case 'quote':
+      return `> ${block.data.text}\n\n`;
+    case 'code':
+      return `\`\`\`${block.data.language || ''}\n${block.data.code}\n\`\`\`\n\n`;
+    // ... more block types
+  }
+}
+```
+
+**Export Implementation:**
+```javascript
+import JSZip from 'jszip';
+
+async function exportAsZip(postId, options = {}) {
+  const {
+    optimizeImages = true,
+    includeMarkdown = true,
+    imageQuality = 0.85,
+    maxImageWidth = 2000
+  } = options;
+
+  // Get post and images from IndexedDB
+  const post = await db.posts.get(postId);
+  const images = await db.images.where('postId').equals(postId).toArray();
+  const theme = await db.themes.get(post.theme);
+
+  // Create ZIP
+  const zip = new JSZip();
+
+  // Optimize and add images
+  for (const image of images) {
+    const optimized = optimizeImages
+      ? await optimizeImage(image.file, { maxWidth: maxImageWidth, quality: imageQuality })
+      : image.file;
+
+    const filename = optimizeImages
+      ? image.filename.replace(/\.(jpg|jpeg|png)$/i, '.webp')
+      : image.filename;
+
+    zip.file(`images/${filename}`, optimized);
+  }
+
+  // Generate and add HTML
+  const htmlContent = generateHTML(post, images, theme);
+  zip.file('index.html', htmlContent);
+
+  // Generate and add Markdown
+  if (includeMarkdown) {
+    const markdownContent = generateMarkdown(post, images);
+    zip.file('index.md', markdownContent);
+  }
+
+  // Add CSS
+  zip.file('css/theme.css', theme.css);
+
+  // Generate ZIP blob
+  const blob = await zip.generateAsync({ type: 'blob' });
+
+  // Download
+  downloadFile(blob, `${post.slug}.zip`);
+}
+```
+
+**Performance Comparison:**
+
+| Approach | HTML Size | Total Size | Page Load | Browser Support |
+|----------|-----------|------------|-----------|-----------------|
+| Base64 (5 images) | 2.5MB | 2.5MB | ~4s | 100% |
+| ZIP - Original | 15KB | 1.8MB | ~1.2s | 100% |
+| ZIP - Optimized | 15KB | 600KB | ~0.6s | 100% |
+
 **Deployment Options:**
-- Download as ZIP (HTML + assets)
+- Download as ZIP (HTML + Markdown + optimized assets)
 - Direct deploy to Netlify (via API)
 - Direct deploy to Vercel (via API)
 - Push to GitHub Pages (via GitHub API)
@@ -578,29 +766,32 @@ class YouTubeEmbed {
 
 **Deliverable:** Beautiful, responsive content with theme switching
 
-### Phase 3: Custom Blocks (Week 3)
+### Phase 3: Custom Blocks & Images (Week 3)
 **Goal: Enhanced editing capabilities**
 
 **Tasks:**
-1. YouTube embed block
-2. Spacer block
-3. Block testing and refinement
-4. Image upload handling (base64 or File System API)
+1. Image upload with file picker (File API)
+2. Store images as Blobs in IndexedDB
+3. Object URL preview system
+4. YouTube embed block
+5. Spacer block
+6. Block testing and refinement
 
-**Deliverable:** Full-featured block editor
+**Deliverable:** Full-featured block editor with image support
 
 ### Phase 4: Export System (Week 4)
-**Goal: Static HTML generation**
+**Goal: Static HTML & Markdown generation**
 
 **Tasks:**
 1. EditorJS to HTML renderer
-2. HTML template system
-3. CSS inlining
-4. Asset bundling
-5. Download as ZIP
-6. Single-file HTML export
+2. EditorJS to Markdown renderer
+3. Image optimization (resize, WebP conversion)
+4. HTML template system
+5. ZIP bundler (JSZip integration)
+6. Download as ZIP (HTML + Markdown + optimized images)
+7. Optional: Single-file HTML export (with warnings)
 
-**Deliverable:** Can export posts to static HTML
+**Deliverable:** Can export posts to static HTML and Markdown with optimized images
 
 ### Phase 5: Publishing (Week 5)
 **Goal: Deploy to hosting platforms**
@@ -638,9 +829,13 @@ class YouTubeEmbed {
 | Framework | Vanilla JS + Vite | Maximum performance, minimal overhead |
 | Editor | EditorJS | Block-native, clean JSON, extensible |
 | Storage | IndexedDB (Dexie) | Async, large storage, structured data |
+| Image Handling | File API + Blobs | 100% browser support, instant preview, offline-first |
+| Image Storage | Object URLs + IndexedDB | No encoding overhead, works everywhere |
+| Image Export | WebP optimization | 30-70% size reduction, fast page loads |
 | Styling | CSS Variables | Native theming, zero runtime cost |
 | Type Scale | Minor Third (1.2) | Subtle, text-heavy interfaces |
-| Export | Static HTML | Universal compatibility, free hosting |
+| Export Format | ZIP (HTML + Markdown) | Optimal performance, portable content |
+| Bundling | JSZip (lazy-loaded) | Standard format, keeps main bundle small |
 | Hosting | Netlify/Vercel/GitHub Pages | Free, fast, simple deployment |
 
 ---
@@ -674,36 +869,73 @@ class YouTubeEmbed {
 - ✅ Simple theme authoring (CSS only)
 - ✅ Live theme preview
 
-### Publishing
-- ✅ Download as HTML
-- ✅ Download as ZIP (with assets)
+### Publishing & Export
+- ✅ Download as ZIP (HTML + Markdown + optimized images)
+- ✅ Automatic image optimization (WebP, resize)
+- ✅ Markdown export alongside HTML
+- ✅ Optional single-file HTML (with warnings)
 - ✅ Deploy to Netlify
 - ✅ Deploy to Vercel
 - ✅ Deploy to GitHub Pages
 
 ---
 
-## 10. Open Questions & Future Enhancements
+## 10. Decisions Made & Future Enhancements
 
-### Questions for Approval
-1. **Image handling**: Should we use base64 encoding, or File System Access API for local files?
-2. **Multi-site support**: Should we support publishing to multiple sites, or one site per install?
-3. **Markdown support**: Should we support importing/exporting Markdown alongside HTML?
-4. **Collaboration**: Future support for multi-user editing (beyond v1.0)?
+### ✅ Decisions Finalized
+
+1. **Image handling**: ✅ File API + Blobs in IndexedDB + Object URLs
+   - Works in 100% of browsers
+   - Instant preview, no encoding overhead
+   - Full offline support
+
+2. **Image export**: ✅ ZIP with optimized WebP images
+   - Automatic resize and WebP conversion
+   - 30-70% size reduction
+   - Optimal page load performance
+
+3. **Markdown support**: ✅ Export both HTML and Markdown
+   - Markdown generated alongside HTML in ZIP
+   - Portable content format
+   - Import functionality deferred to post-v1.0
+
+4. **Multi-site support**: ✅ Single site for v1.0, multi-site planned
+   - Start simple with one configured site
+   - Architecture will support multiple sites in future
 
 ### Future Enhancements (Post v1.0)
+
+**Content Management:**
 - Search across all posts
 - Tags and categories
-- Custom fonts in themes
-- Theme marketplace
+- Markdown import functionality
+- Content versioning/history
+- Post templates
+
+**Publishing:**
+- Multiple site configurations
 - Export to Medium/Dev.to
-- Markdown import/export
-- Analytics integration
 - RSS feed generation
 - Sitemap generation
-- Image optimization
-- Dark mode for app UI
-- Mobile app (PWA)
+- Automated deployment scheduling
+
+**Themes & Design:**
+- Custom fonts in themes
+- Theme marketplace/gallery
+- Dark mode for app UI (content themes can already do this)
+- Theme preview gallery
+
+**Advanced Features:**
+- Collaboration/multi-user editing
+- Analytics integration
+- SEO metadata editor
+- Comment system integration
+- Mobile app (PWA with offline sync)
+
+**Performance:**
+- Service worker for app caching
+- Background sync for auto-publish
+- Incremental static regeneration
 
 ---
 
@@ -738,6 +970,7 @@ class YouTubeEmbed {
     "@editorjs/code": "^2.9.0",
     "@editorjs/image": "^2.9.0",
     "dexie": "^4.0.0",
+    "jszip": "^3.10.0",
     "nanoid": "^5.0.0"
   },
   "devDependencies": {
@@ -749,10 +982,19 @@ class YouTubeEmbed {
 ```
 
 **Bundle Size Estimate:**
+
+*Main bundle (editor):*
 - EditorJS + plugins: ~150KB
 - Dexie: ~30KB
 - App code: ~30KB
-- **Total:** ~210KB (≈60KB gzipped)
+- **Main Total:** ~210KB (≈60KB gzipped)
+
+*Lazy-loaded (export):*
+- JSZip: ~100KB (~30KB gzipped)
+- Export utilities: ~20KB
+- **Export Total:** ~120KB (≈35KB gzipped)
+
+**Overall:** ~330KB uncompressed (≈95KB gzipped total, loaded on demand)
 
 ---
 
@@ -800,11 +1042,23 @@ This plan was informed by the following research:
 
 ## Next Steps
 
-1. **Review this plan** and provide feedback
-2. **Answer open questions** (see section 10)
-3. **Approve to proceed** with Phase 1 implementation
-4. **Initial commit** of project structure
+### Ready to Begin Implementation! 🚀
+
+All key decisions have been finalized:
+- ✅ Image handling strategy (File API + Blobs + WebP optimization)
+- ✅ Export format (ZIP with HTML + Markdown)
+- ✅ Multi-site support roadmap (v1.0: single site, future: multiple)
+- ✅ Technology stack validated
+
+**To Start Phase 1:**
+1. Initialize project with Vite
+2. Set up IndexedDB schema with Dexie
+3. Implement basic routing
+4. Integrate EditorJS
+5. Build posts list and editor views
 
 ---
 
 *This plan represents a comprehensive blueprint for building Write Local. It balances ambitious goals with pragmatic implementation, prioritizing the core writing experience while maintaining flexibility for future enhancements.*
+
+**Last Updated:** 2026-01-02 - All architectural decisions finalized and approved
