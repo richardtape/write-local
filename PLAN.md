@@ -124,6 +124,320 @@
 - PostCSS for vendor prefixes and optimizations
 - Native CSS nesting support
 
+### 2.6 Testing Strategy
+**Choice: Test-Driven Development (TDD) with Vitest**
+
+**Philosophy:**
+We'll build Write Local using **Test-Driven Development** (TDD), following the Red-Green-Refactor cycle:
+1. **🔴 Red**: Write a failing test first
+2. **🟢 Green**: Write minimal code to make the test pass
+3. **🔵 Refactor**: Improve code quality without changing behavior
+
+**Rationale:**
+- **Quality First**: Tests written before code ensure better design
+- **Living Documentation**: Tests document how code should work
+- **Confidence**: Refactor fearlessly with comprehensive test coverage
+- **Fast Feedback**: Vitest provides instant feedback during development
+- **Prevention**: Catch bugs before they reach users
+
+**Testing Tools:**
+
+```json
+{
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "@vitest/ui": "^2.0.0",
+    "@testing-library/dom": "^10.0.0",
+    "@testing-library/user-event": "^14.5.0",
+    "happy-dom": "^15.0.0",
+    "fake-indexeddb": "^6.0.0",
+    "msw": "^2.0.0"
+  }
+}
+```
+
+**Tool Breakdown:**
+
+| Tool | Purpose | Why |
+|------|---------|-----|
+| **Vitest** | Test runner | Vite-native, incredibly fast, Jest-compatible API |
+| **@vitest/ui** | Test UI | Beautiful browser UI for tests |
+| **@testing-library/dom** | DOM testing | Test UI components from user perspective |
+| **@testing-library/user-event** | User interaction | Simulate realistic user interactions |
+| **happy-dom** | DOM environment | Lightweight DOM implementation for tests |
+| **fake-indexeddb** | IndexedDB mock | In-memory IndexedDB for testing storage |
+| **MSW** | API mocking | Mock network requests for publishing features |
+
+**Test Structure:**
+
+```
+write-local/
+├── src/
+│   ├── core/
+│   │   ├── storage.js
+│   │   └── storage.test.js      # Unit tests alongside source
+│   ├── exporter/
+│   │   ├── html-generator.js
+│   │   └── html-generator.test.js
+│   └── utils/
+│       ├── slug.js
+│       └── slug.test.js
+├── tests/
+│   ├── setup.ts                 # Global test setup
+│   ├── integration/             # Integration tests
+│   │   ├── post-workflow.test.js
+│   │   ├── export-workflow.test.js
+│   │   └── theme-workflow.test.js
+│   └── e2e/                     # End-to-end tests (optional)
+│       └── writing-flow.test.js
+└── vitest.config.js
+```
+
+**Test Categories:**
+
+**1. Unit Tests** (80% of tests)
+- Pure functions and utilities
+- Individual modules in isolation
+- Fast, focused, deterministic
+
+**Examples:**
+```javascript
+// src/utils/slug.test.js
+import { describe, it, expect } from 'vitest';
+import { generateSlug } from './slug';
+
+describe('generateSlug', () => {
+  it('converts title to lowercase slug', () => {
+    expect(generateSlug('Hello World')).toBe('hello-world');
+  });
+
+  it('removes special characters', () => {
+    expect(generateSlug('Hello, World!')).toBe('hello-world');
+  });
+
+  it('handles multiple spaces', () => {
+    expect(generateSlug('Hello    World')).toBe('hello-world');
+  });
+});
+```
+
+**2. Integration Tests** (15% of tests)
+- Multiple modules working together
+- Storage + business logic
+- Export system end-to-end
+
+**Examples:**
+```javascript
+// tests/integration/post-workflow.test.js
+import { describe, it, expect, beforeEach } from 'vitest';
+import { db } from '../../src/core/storage';
+import { createPost, savePost, getPost } from '../../src/core/posts';
+
+describe('Post Workflow', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  it('creates and retrieves a post', async () => {
+    const post = await createPost({ title: 'Test Post' });
+    expect(post.id).toBeDefined();
+
+    const retrieved = await getPost(post.id);
+    expect(retrieved.title).toBe('Test Post');
+  });
+
+  it('auto-generates slug from title', async () => {
+    const post = await createPost({ title: 'My First Post' });
+    expect(post.slug).toBe('my-first-post');
+  });
+});
+```
+
+**3. Component Tests** (5% of tests)
+- UI components with user interactions
+- DOM assertions
+
+**Examples:**
+```javascript
+// src/components/post-list.test.js
+import { describe, it, expect, beforeEach } from 'vitest';
+import { screen } from '@testing-library/dom';
+import { userEvent } from '@testing-library/user-event';
+import { renderPostList } from './post-list';
+import { db } from '../core/storage';
+
+describe('PostList Component', () => {
+  beforeEach(async () => {
+    await db.posts.clear();
+    await db.posts.bulkAdd([
+      { id: '1', title: 'Post 1', status: 'draft' },
+      { id: '2', title: 'Post 2', status: 'published' }
+    ]);
+  });
+
+  it('renders list of posts', async () => {
+    await renderPostList(document.body);
+    expect(screen.getByText('Post 1')).toBeInTheDocument();
+    expect(screen.getByText('Post 2')).toBeInTheDocument();
+  });
+
+  it('filters by status', async () => {
+    await renderPostList(document.body);
+    await userEvent.click(screen.getByText('Drafts'));
+    expect(screen.getByText('Post 1')).toBeInTheDocument();
+    expect(screen.queryByText('Post 2')).not.toBeInTheDocument();
+  });
+});
+```
+
+**Test Coverage Requirements:**
+
+| Area | Minimum Coverage | Target Coverage |
+|------|------------------|-----------------|
+| **Core (storage, router)** | 90% | 100% |
+| **Exporter (HTML, Markdown)** | 85% | 95% |
+| **Utils** | 90% | 100% |
+| **Blocks (custom)** | 80% | 90% |
+| **Components** | 70% | 85% |
+| **Overall** | 80% | 90% |
+
+**Vitest Configuration:**
+
+```javascript
+// vitest.config.js
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'happy-dom',
+    setupFiles: ['./tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'tests/',
+        '**/*.test.js',
+        '**/*.config.js'
+      ],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80
+      }
+    },
+    // Watch mode: only run tests related to changed files
+    watch: true,
+    // Parallel test execution
+    threads: true,
+    // Fail fast on first error (useful for TDD)
+    bail: 1
+  }
+});
+```
+
+**Test Setup (IndexedDB):**
+
+```typescript
+// tests/setup.ts
+import { indexedDB, IDBKeyRange } from 'fake-indexeddb';
+
+// Polyfill IndexedDB for tests
+global.indexedDB = indexedDB;
+global.IDBKeyRange = IDBKeyRange;
+
+// Mock URL.createObjectURL for image tests
+global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+global.URL.revokeObjectURL = vi.fn();
+
+// Reset database between tests
+import { beforeEach } from 'vitest';
+import { db } from '../src/core/storage';
+
+beforeEach(async () => {
+  await db.delete();
+  await db.open();
+});
+```
+
+**TDD Workflow Example:**
+
+**Feature: Generate slug from post title**
+
+**Step 1: 🔴 Red - Write failing test**
+```javascript
+// src/utils/slug.test.js
+import { describe, it, expect } from 'vitest';
+import { generateSlug } from './slug';
+
+describe('generateSlug', () => {
+  it('converts title to lowercase slug', () => {
+    expect(generateSlug('Hello World')).toBe('hello-world');
+  });
+});
+```
+
+Run: `npm run test` → ❌ FAIL (function doesn't exist)
+
+**Step 2: 🟢 Green - Write minimal code**
+```javascript
+// src/utils/slug.js
+export function generateSlug(title) {
+  return title.toLowerCase().replace(/\s+/g, '-');
+}
+```
+
+Run: `npm run test` → ✅ PASS
+
+**Step 3: 🔵 Refactor - Improve**
+```javascript
+// Add more test cases
+it('removes special characters', () => {
+  expect(generateSlug('Hello, World!')).toBe('hello-world');
+});
+```
+
+Run: `npm run test` → ❌ FAIL
+
+```javascript
+// Improve implementation
+export function generateSlug(title) {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')  // Remove special chars
+    .replace(/\s+/g, '-')      // Replace spaces
+    .replace(/-+/g, '-')       // Collapse hyphens
+    .trim();
+}
+```
+
+Run: `npm run test` → ✅ PASS
+
+**Benefits for Write Local:**
+
+1. **Confidence in Storage**: Tests ensure IndexedDB operations are reliable
+2. **Export Quality**: Tests validate HTML/Markdown output is correct
+3. **Image Handling**: Tests verify Blob storage and optimization work
+4. **Regression Prevention**: Changes don't break existing features
+5. **Faster Development**: Less time debugging, more time building
+6. **Better Design**: TDD forces modular, testable architecture
+
+**Testing Commands:**
+
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:run": "vitest run"
+  }
+}
+```
+
 ---
 
 ## 3. Architecture Design
@@ -135,23 +449,38 @@ write-local/
 ├── src/
 │   ├── core/
 │   │   ├── editor.js           # EditorJS initialization
+│   │   ├── editor.test.js      # ✅ Unit tests
 │   │   ├── storage.js          # Dexie database setup
+│   │   ├── storage.test.js     # ✅ Unit tests
 │   │   ├── router.js           # Simple hash-based routing
-│   │   └── theme-engine.js     # Theme loading and switching
+│   │   ├── router.test.js      # ✅ Unit tests
+│   │   ├── theme-engine.js     # Theme loading and switching
+│   │   └── theme-engine.test.js # ✅ Unit tests
 │   ├── components/
 │   │   ├── post-list.js        # Posts listing view
+│   │   ├── post-list.test.js   # ✅ Component tests
 │   │   ├── post-editor.js      # Main editor view
+│   │   ├── post-editor.test.js # ✅ Component tests
 │   │   ├── theme-selector.js   # Theme picker component
-│   │   └── publish-modal.js    # Static HTML export UI
+│   │   ├── theme-selector.test.js # ✅ Component tests
+│   │   ├── publish-modal.js    # Static HTML export UI
+│   │   └── publish-modal.test.js # ✅ Component tests
 │   ├── blocks/
 │   │   ├── youtube-embed.js    # Custom EditorJS block
-│   │   └── spacer.js           # Custom spacing block
+│   │   ├── youtube-embed.test.js # ✅ Unit tests
+│   │   ├── spacer.js           # Custom spacing block
+│   │   └── spacer.test.js      # ✅ Unit tests
 │   ├── exporter/
 │   │   ├── html-generator.js   # Render EditorJS to HTML
+│   │   ├── html-generator.test.js # ✅ Unit tests
 │   │   ├── markdown-generator.js # Render EditorJS to Markdown
+│   │   ├── markdown-generator.test.js # ✅ Unit tests
 │   │   ├── template.js         # HTML template structure
+│   │   ├── template.test.js    # ✅ Unit tests
 │   │   ├── bundler.js          # Bundle HTML + CSS + assets (ZIP)
-│   │   └── image-optimizer.js  # Optimize images for export
+│   │   ├── bundler.test.js     # ✅ Integration tests
+│   │   ├── image-optimizer.js  # Optimize images for export
+│   │   └── image-optimizer.test.js # ✅ Unit tests
 │   ├── themes/
 │   │   ├── default.css         # Default minimal theme
 │   │   ├── serif.css           # Alternative serif theme
@@ -162,14 +491,27 @@ write-local/
 │   │   └── variables.css       # CSS custom properties
 │   ├── utils/
 │   │   ├── slug.js             # URL slug generation
+│   │   ├── slug.test.js        # ✅ Unit tests
 │   │   ├── date.js             # Date formatting
-│   │   └── download.js         # File download helpers
+│   │   ├── date.test.js        # ✅ Unit tests
+│   │   ├── download.js         # File download helpers
+│   │   └── download.test.js    # ✅ Unit tests
 │   └── main.js                 # App entry point
+├── tests/
+│   ├── setup.ts                # Global test setup (IndexedDB, mocks)
+│   ├── integration/            # Integration tests
+│   │   ├── post-workflow.test.js    # Create → Edit → Save → Retrieve
+│   │   ├── export-workflow.test.js  # Export → ZIP → HTML + Markdown
+│   │   ├── theme-workflow.test.js   # Theme → Apply → Export
+│   │   └── image-workflow.test.js   # Upload → Store → Optimize → Export
+│   └── e2e/                    # End-to-end tests (optional)
+│       └── writing-flow.test.js     # Full user journey
 ├── public/
 │   └── themes/                 # User-added themes
 ├── dist/                       # Build output
 ├── index.html
 ├── vite.config.js
+├── vitest.config.js            # ✅ Test configuration
 └── package.json
 ```
 
@@ -734,91 +1076,306 @@ class YouTubeEmbed {
 
 ---
 
-## 7. Implementation Phases
+## 7. Implementation Phases (TDD Approach)
 
-### Phase 1: Foundation (Week 1-2)
-**Goal: Basic editor and storage working**
+**All phases follow Red-Green-Refactor cycle:**
+- 🔴 Write failing test first
+- 🟢 Write minimal code to pass
+- 🔵 Refactor and improve
 
-**Tasks:**
-1. Project setup (Vite + dependencies)
-2. IndexedDB setup with Dexie
-3. Basic routing (hash-based)
-4. EditorJS integration
-5. Post creation and editing
-6. Auto-save to IndexedDB
-7. Posts list view
-8. Basic navigation
+### Phase 1: Foundation with TDD (Week 1-2)
+**Goal: Basic editor and storage working with comprehensive tests**
 
-**Deliverable:** Can create, edit, and save posts locally
+**TDD Tasks:**
 
-### Phase 2: Styling System (Week 2-3)
+**Week 1: Core Infrastructure**
+1. **Project Setup**
+   - Initialize Vite project
+   - Configure Vitest + testing tools
+   - Set up test directory structure
+   - Create vitest.config.js and tests/setup.ts
+
+2. **Utils (TDD)**
+   - 🔴 Write tests for `generateSlug()`
+   - 🟢 Implement slug generation
+   - 🔴 Write tests for date formatting
+   - 🟢 Implement date utilities
+   - 🔵 Refactor for edge cases
+
+3. **Storage Layer (TDD)**
+   - 🔴 Write tests for Dexie setup
+   - 🟢 Initialize IndexedDB schema
+   - 🔴 Write tests for CRUD operations (posts)
+   - 🟢 Implement post storage methods
+   - 🔴 Write tests for queries/indexes
+   - 🟢 Implement efficient queries
+   - 🔵 Refactor with error handling
+
+**Week 2: Editor & Navigation**
+4. **Router (TDD)**
+   - 🔴 Write tests for hash-based routing
+   - 🟢 Implement basic router
+   - 🔴 Write tests for route parameters
+   - 🟢 Add parameter parsing
+   - 🔵 Refactor for cleaner API
+
+5. **EditorJS Integration (TDD)**
+   - 🔴 Write tests for editor initialization
+   - 🟢 Integrate EditorJS
+   - 🔴 Write tests for content save/load
+   - 🟢 Implement save/load logic
+   - 🔵 Optimize for performance
+
+6. **Posts Management (TDD)**
+   - 🔴 Write integration tests for post workflow
+   - 🟢 Implement createPost, savePost, getPost
+   - 🔴 Write tests for auto-save
+   - 🟢 Implement debounced auto-save
+   - 🔵 Add error recovery
+
+7. **Posts List Component (TDD)**
+   - 🔴 Write component tests for rendering posts
+   - 🟢 Implement posts list UI
+   - 🔴 Write tests for filtering (draft/published)
+   - 🟢 Implement filter functionality
+   - 🔵 Optimize rendering
+
+**Deliverable:**
+- ✅ Can create, edit, and save posts locally
+- ✅ 90%+ test coverage on core modules
+- ✅ All tests passing
+- ✅ Test suite runs in <5 seconds
+
+### Phase 2: Styling System with TDD (Week 2-3)
 **Goal: Typography and theme system**
 
-**Tasks:**
-1. CSS variables architecture
-2. Minor third type scale implementation
-3. Responsive fluid typography with clamp()
-4. Base content styles
-5. Default theme
-6. Alternative serif theme
-7. Theme switcher component
-8. Theme preview system
+**TDD Tasks:**
+1. **CSS Variables Architecture**
+   - Design base variables (minor third scale)
+   - Implement responsive fluid typography with clamp()
+   - Create base content styles
 
-**Deliverable:** Beautiful, responsive content with theme switching
+2. **Theme Engine (TDD)**
+   - 🔴 Write tests for theme loading
+   - 🟢 Implement theme CSS injection
+   - 🔴 Write tests for theme switching
+   - 🟢 Implement dynamic theme switching
+   - 🔴 Write tests for per-post themes
+   - 🟢 Implement theme persistence
+   - 🔵 Refactor for performance
 
-### Phase 3: Custom Blocks & Images (Week 3)
+3. **Default Themes**
+   - Create default minimal theme
+   - Create serif alternative theme
+   - Test theme isolation (app UI vs content)
+
+4. **Theme Selector Component (TDD)**
+   - 🔴 Write tests for theme dropdown
+   - 🟢 Implement theme selector UI
+   - 🔴 Write tests for live preview
+   - 🟢 Implement preview on hover
+   - 🔵 Polish UX
+
+**Deliverable:**
+- ✅ Beautiful, responsive content with theme switching
+- ✅ 85%+ test coverage on theme engine
+- ✅ All tests passing
+
+### Phase 3: Custom Blocks & Images with TDD (Week 3)
 **Goal: Enhanced editing capabilities**
 
-**Tasks:**
-1. Image upload with file picker (File API)
-2. Store images as Blobs in IndexedDB
-3. Object URL preview system
-4. YouTube embed block
-5. Spacer block
-6. Block testing and refinement
+**TDD Tasks:**
+1. **Image Handling (TDD)**
+   - 🔴 Write tests for file upload
+   - 🟢 Implement file picker
+   - 🔴 Write tests for Blob storage in IndexedDB
+   - 🟢 Implement image storage
+   - 🔴 Write tests for Object URL generation
+   - 🟢 Implement preview system
+   - 🔵 Add error handling (file too large, wrong type)
 
-**Deliverable:** Full-featured block editor with image support
+2. **YouTube Embed Block (TDD)**
+   - 🔴 Write tests for URL parsing
+   - 🟢 Implement video ID extraction
+   - 🔴 Write tests for embed rendering
+   - 🟢 Create custom EditorJS block
+   - 🔵 Add validation
 
-### Phase 4: Export System (Week 4)
+3. **Spacer Block (TDD)**
+   - 🔴 Write tests for spacer sizes
+   - 🟢 Implement spacer block
+   - 🔴 Write tests for custom size
+   - 🟢 Add custom size option
+   - 🔵 Refactor for simplicity
+
+4. **Integration Testing**
+   - 🔴 Write integration tests for image workflow
+   - 🟢 Test upload → store → display → edit
+   - All custom blocks tested in editor
+
+**Deliverable:**
+- ✅ Full-featured block editor with image support
+- ✅ 85%+ test coverage on custom blocks
+- ✅ Image handling fully tested
+
+### Phase 4: Export System with TDD (Week 4)
 **Goal: Static HTML & Markdown generation**
 
-**Tasks:**
-1. EditorJS to HTML renderer
-2. EditorJS to Markdown renderer
-3. Image optimization (resize, WebP conversion)
-4. HTML template system
-5. ZIP bundler (JSZip integration)
-6. Download as ZIP (HTML + Markdown + optimized images)
-7. Optional: Single-file HTML export (with warnings)
+**TDD Tasks:**
+1. **HTML Generator (TDD)**
+   - 🔴 Write tests for paragraph rendering
+   - 🟢 Implement paragraph → HTML
+   - 🔴 Write tests for headings
+   - 🟢 Implement heading → HTML
+   - 🔴 Write tests for all block types
+   - 🟢 Implement complete renderer
+   - 🔴 Write tests for image references
+   - 🟢 Implement image path handling
+   - 🔵 Refactor for maintainability
 
-**Deliverable:** Can export posts to static HTML and Markdown with optimized images
+2. **Markdown Generator (TDD)**
+   - 🔴 Write tests for Markdown conversion
+   - 🟢 Implement EditorJS → Markdown
+   - 🔴 Write tests for all block types
+   - 🟢 Complete Markdown renderer
+   - 🔵 Handle edge cases
 
-### Phase 5: Publishing (Week 5)
+3. **Image Optimizer (TDD)**
+   - 🔴 Write tests for image resizing
+   - 🟢 Implement Canvas-based resize
+   - 🔴 Write tests for WebP conversion
+   - 🟢 Implement format conversion
+   - 🔴 Write tests for quality settings
+   - 🟢 Add quality controls
+   - 🔵 Optimize performance
+
+4. **ZIP Bundler (TDD)**
+   - 🔴 Write integration tests for ZIP export
+   - 🟢 Implement JSZip bundling
+   - 🔴 Write tests for file structure
+   - 🟢 Generate correct directory structure
+   - 🔴 Write tests for optimized images in ZIP
+   - 🟢 Include optimized images
+   - 🔵 Add progress indicators
+
+5. **Template System (TDD)**
+   - 🔴 Write tests for HTML template
+   - 🟢 Implement template generation
+   - 🔴 Write tests for CSS inlining
+   - 🟢 Inline theme CSS
+   - 🔵 Minify output (optional)
+
+6. **Export Integration**
+   - 🔴 Write end-to-end export tests
+   - 🟢 Test complete workflow: Post → ZIP (HTML + Markdown + Images + CSS)
+   - Verify ZIP structure
+   - Verify file contents
+
+**Deliverable:**
+- ✅ Can export posts to static HTML and Markdown with optimized images
+- ✅ 90%+ test coverage on export system
+- ✅ Integration tests verify complete export workflow
+- ✅ ZIP files validated
+
+### Phase 5: Publishing with TDD (Week 5)
 **Goal: Deploy to hosting platforms**
 
-**Tasks:**
-1. Netlify API integration
-2. Vercel API integration
-3. GitHub Pages deployment
-4. Publish UI and flow
-5. Deployment testing
+**TDD Tasks:**
+1. **Netlify Integration (TDD)**
+   - 🔴 Write tests for Netlify API auth
+   - 🟢 Implement OAuth flow (using MSW to mock)
+   - 🔴 Write tests for site deployment
+   - 🟢 Implement deploy endpoint
+   - 🔵 Add error handling
 
-**Deliverable:** One-click publish to free hosts
+2. **Vercel Integration (TDD)**
+   - 🔴 Write tests for Vercel API
+   - 🟢 Implement deployment
+   - 🔵 Refactor shared code
 
-### Phase 6: Polish & Performance (Week 6)
+3. **GitHub Pages Integration (TDD)**
+   - 🔴 Write tests for GitHub API
+   - 🟢 Implement push to gh-pages
+   - 🔵 Add branch protection checks
+
+4. **Publish Modal Component (TDD)**
+   - 🔴 Write tests for publish UI
+   - 🟢 Implement publish modal
+   - 🔴 Write tests for platform selection
+   - 🟢 Add platform dropdown
+   - 🔴 Write tests for deployment status
+   - 🟢 Show progress/success/error states
+   - 🔵 Polish UX
+
+5. **Integration Testing**
+   - Use MSW to mock API responses
+   - Test complete publish workflow
+   - Verify error scenarios
+
+**Deliverable:**
+- ✅ One-click publish to free hosts
+- ✅ 80%+ test coverage (mocked API calls)
+- ✅ Error handling tested
+
+### Phase 6: Polish & Performance with TDD (Week 6)
 **Goal: Production-ready**
 
-**Tasks:**
-1. Performance optimization
-2. Keyboard shortcuts
-3. Distraction-free mode
-4. Settings panel
-5. Data export/import
-6. Documentation
-7. User testing
-8. Bug fixes
+**TDD Tasks:**
+1. **Keyboard Shortcuts (TDD)**
+   - 🔴 Write tests for keyboard events
+   - 🟢 Implement shortcuts (Ctrl+S, Ctrl+N, etc.)
+   - 🔵 Add shortcut help overlay
 
-**Deliverable:** Production-ready v1.0
+2. **Distraction-Free Mode (TDD)**
+   - 🔴 Write tests for fullscreen toggle
+   - 🟢 Implement distraction-free mode
+   - 🔵 Smooth transitions
+
+3. **Settings Panel (TDD)**
+   - 🔴 Write tests for settings storage
+   - 🟢 Implement settings in IndexedDB
+   - 🔴 Write tests for settings UI
+   - 🟢 Build settings panel
+   - 🔵 Add validation
+
+4. **Data Export/Import (TDD)**
+   - 🔴 Write tests for data export (JSON)
+   - 🟢 Implement full database export
+   - 🔴 Write tests for data import
+   - 🟢 Implement import with validation
+   - 🔵 Handle conflicts
+
+5. **Performance Optimization**
+   - Run Lighthouse audits
+   - Measure bundle sizes
+   - Optimize critical path
+   - Verify <1s initial load
+   - Test typing latency (<16ms)
+
+6. **Final Testing**
+   - Review test coverage (target 85%+)
+   - Run full test suite
+   - Fix any failing tests
+   - E2E testing of critical flows
+
+7. **Documentation**
+   - README with setup instructions
+   - Contributing guide
+   - Theme authoring guide
+   - API documentation
+
+8. **User Testing**
+   - Test with real users
+   - Gather feedback
+   - Fix critical bugs
+   - Polish rough edges
+
+**Deliverable:**
+- ✅ Production-ready v1.0
+- ✅ 85%+ overall test coverage
+- ✅ All performance targets met
+- ✅ Comprehensive documentation
+- ✅ Battle-tested with users
 
 ---
 
@@ -976,7 +1533,15 @@ class YouTubeEmbed {
   "devDependencies": {
     "vite": "^5.0.0",
     "postcss": "^8.4.0",
-    "autoprefixer": "^10.4.0"
+    "autoprefixer": "^10.4.0",
+    "vitest": "^2.0.0",
+    "@vitest/ui": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "@testing-library/dom": "^10.0.0",
+    "@testing-library/user-event": "^14.5.0",
+    "happy-dom": "^15.0.0",
+    "fake-indexeddb": "^6.0.0",
+    "msw": "^2.0.0"
   }
 }
 ```
