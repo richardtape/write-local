@@ -1,0 +1,11 @@
+/**
+ * Minimal Theme
+ * Clean, white background with subtle styling
+ */
+
+:root {
+  /* Just override the background for now (scaffolding) */
+  --color-background: #cccccc;
+  --color-text: #1a1a1a;
+  --color-accent: #0066cc;
+}

@@ -4,6 +4,7 @@ import { renderPostList } from './post-list.js';
 
 describe('PostList Component', () => {
   let container;
+  let mockRouter;
 
   beforeEach(async () => {
     // Clean database
@@ -14,6 +15,12 @@ describe('PostList Component', () => {
     container = document.createElement('div');
     container.id = 'post-list-container';
     document.body.appendChild(container);
+
+    // Create mock router
+    mockRouter = {
+      navigate: vi.fn(),
+      handleRoute: vi.fn()
+    };
   });
 
   afterEach(() => {
@@ -24,7 +31,7 @@ describe('PostList Component', () => {
   });
 
   it('should render an empty state when no posts exist', async () => {
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     expect(container.textContent).toContain('No posts yet');
   });
@@ -35,7 +42,7 @@ describe('PostList Component', () => {
     await createPost({ title: 'Second Post', content: [] });
     await createPost({ title: 'Third Post', content: [] });
 
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     // Should show all three posts
     expect(container.textContent).toContain('First Post');
@@ -53,7 +60,7 @@ describe('PostList Component', () => {
 
     await createPost({ title: 'Newest Post', content: [] });
 
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     const postItems = container.querySelectorAll('.post-item');
     expect(postItems).toHaveLength(3);
@@ -72,7 +79,7 @@ describe('PostList Component', () => {
     const pending = await createPost({ title: 'Pending Post', content: [] });
     await setStatus(pending.id, 'pending');
 
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     expect(container.textContent).toContain('draft');
     expect(container.textContent).toContain('published');
@@ -82,7 +89,7 @@ describe('PostList Component', () => {
   it('should display relative time for last updated', async () => {
     await createPost({ title: 'Recent Post', content: [] });
 
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     // Should show some kind of time indicator
     // (actual format will depend on implementation, but should exist)
@@ -96,42 +103,41 @@ describe('PostList Component', () => {
     const trashed = await createPost({ title: 'Trashed Post', content: [] });
     await setStatus(trashed.id, 'trashed');
 
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     expect(container.textContent).toContain('Active Post');
     expect(container.textContent).not.toContain('Trashed Post');
   });
 
   it('should render a "New Post" button', async () => {
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     const newPostButton = container.querySelector('[data-action="new-post"]');
     expect(newPostButton).toBeTruthy();
     expect(newPostButton.textContent).toMatch(/new post/i);
   });
 
-  it('should call onNewPost callback when "New Post" button is clicked', async () => {
-    const onNewPost = vi.fn();
-
-    await renderPostList(container, { onNewPost });
+  it('should navigate to /posts when "New Post" button is clicked', async () => {
+    await renderPostList(container, { router: mockRouter });
 
     const newPostButton = container.querySelector('[data-action="new-post"]');
     newPostButton.click();
 
-    expect(onNewPost).toHaveBeenCalledTimes(1);
+    // Wait for async operations to complete
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/posts');
   });
 
-  it('should call onPostSelect callback when a post is clicked', async () => {
+  it('should navigate to post URL when a post is clicked', async () => {
     const post = await createPost({ title: 'Test Post', content: [] });
-    const onPostSelect = vi.fn();
 
-    await renderPostList(container, { onPostSelect });
+    await renderPostList(container, { router: mockRouter });
 
     const postItem = container.querySelector('.post-item');
     postItem.click();
 
-    expect(onPostSelect).toHaveBeenCalledTimes(1);
-    expect(onPostSelect).toHaveBeenCalledWith(post.id);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(`/posts/${post.id}`);
   });
 
   it('should highlight the currently active post', async () => {
@@ -139,7 +145,7 @@ describe('PostList Component', () => {
     await new Promise(resolve => setTimeout(resolve, 10));
     const post2 = await createPost({ title: 'Post 2', content: [] });
 
-    await renderPostList(container, { currentPostId: post2.id });
+    await renderPostList(container, { router: mockRouter, currentPostId: post2.id });
 
     const postItems = container.querySelectorAll('.post-item');
 
@@ -149,7 +155,7 @@ describe('PostList Component', () => {
   });
 
   it('should render filter buttons for All, Drafts, and Published', async () => {
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     const allButton = container.querySelector('[data-filter="all"]');
     const draftsButton = container.querySelector('[data-filter="draft"]');
@@ -166,14 +172,17 @@ describe('PostList Component', () => {
     const published = await createPost({ title: 'Published Post', content: [] });
     await setStatus(published.id, 'published');
 
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     // Click the Drafts filter
     const draftsButton = container.querySelector('[data-filter="draft"]');
     draftsButton.click();
 
-    // Wait for async re-render to complete
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Verify router.navigate was called
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/posts/drafts');
+
+    // Simulate what the router would do: re-render with filter='draft'
+    await renderPostList(container, { router: mockRouter, filter: 'draft' });
 
     // Should only show draft posts
     expect(container.textContent).toContain('Draft Post');
@@ -186,14 +195,17 @@ describe('PostList Component', () => {
     const published = await createPost({ title: 'Published Post', content: [] });
     await setStatus(published.id, 'published');
 
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     // Click the Published filter
     const publishedButton = container.querySelector('[data-filter="published"]');
     publishedButton.click();
 
-    // Wait for async re-render to complete
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Verify router.navigate was called
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/posts/published');
+
+    // Simulate what the router would do: re-render with filter='published'
+    await renderPostList(container, { router: mockRouter, filter: 'published' });
 
     // Should only show published posts
     expect(container.textContent).toContain('Published Post');
@@ -206,17 +218,22 @@ describe('PostList Component', () => {
     const published = await createPost({ title: 'Published Post', content: [] });
     await setStatus(published.id, 'published');
 
-    await renderPostList(container);
+    // Start with drafts filter
+    await renderPostList(container, { router: mockRouter, filter: 'draft' });
 
-    // Click Drafts filter first
-    const draftsButton = container.querySelector('[data-filter="draft"]');
-    draftsButton.click();
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Should only show draft initially
+    expect(container.textContent).toContain('Draft Post');
+    expect(container.textContent).not.toContain('Published Post');
 
-    // Then click All filter
+    // Click All filter
     const allButton = container.querySelector('[data-filter="all"]');
     allButton.click();
-    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Verify router.navigate was called
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/posts');
+
+    // Simulate what the router would do: re-render with filter='all'
+    await renderPostList(container, { router: mockRouter, filter: 'all' });
 
     // Should show both posts
     expect(container.textContent).toContain('Draft Post');
@@ -224,7 +241,8 @@ describe('PostList Component', () => {
   });
 
   it('should mark the active filter button', async () => {
-    await renderPostList(container);
+    // Render with filter='all'
+    await renderPostList(container, { router: mockRouter, filter: 'all' });
 
     let allButton = container.querySelector('[data-filter="all"]');
     let draftsButton = container.querySelector('[data-filter="draft"]');
@@ -233,9 +251,8 @@ describe('PostList Component', () => {
     expect(allButton.classList.contains('active')).toBe(true);
     expect(draftsButton.classList.contains('active')).toBe(false);
 
-    // Click Drafts
-    draftsButton.click();
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Re-render with filter='draft'
+    await renderPostList(container, { router: mockRouter, filter: 'draft' });
 
     // Re-query buttons after re-render
     allButton = container.querySelector('[data-filter="all"]');
@@ -253,7 +270,7 @@ describe('PostList Component', () => {
     const published = await createPost({ title: 'Published Post', content: [] });
     await setStatus(published.id, 'published');
 
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     // All filter should show total count (3)
     const allButton = container.querySelector('[data-filter="all"]');
@@ -269,7 +286,7 @@ describe('PostList Component', () => {
   });
 
   it('should update the list when refresh is called', async () => {
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     // Initially empty
     expect(container.textContent).toContain('No posts yet');
@@ -278,7 +295,7 @@ describe('PostList Component', () => {
     await createPost({ title: 'New Post', content: [] });
 
     // Refresh the list
-    await renderPostList(container);
+    await renderPostList(container, { router: mockRouter });
 
     // Should now show the post
     expect(container.textContent).toContain('New Post');
@@ -289,49 +306,43 @@ describe('PostList Component', () => {
     await createPost({ title: 'Post 1', content: [] });
     await createPost({ title: 'Post 2', content: [] });
 
-    const onDelete = vi.fn();
-    await renderPostList(container, { onDelete });
+    await renderPostList(container, { router: mockRouter });
 
     const deleteButtons = container.querySelectorAll('[data-action="delete-post"]');
     expect(deleteButtons).toHaveLength(2);
   });
 
-  it('should call onDelete callback when delete button is clicked', async () => {
+  it('should move post to trash when delete button is clicked', async () => {
     const post = await createPost({ title: 'Post to Delete', content: [] });
-    const onDelete = vi.fn();
 
-    await renderPostList(container, { onDelete });
+    await renderPostList(container, { router: mockRouter });
 
     const deleteButton = container.querySelector('[data-action="delete-post"]');
     deleteButton.click();
 
-    expect(onDelete).toHaveBeenCalledTimes(1);
-    expect(onDelete).toHaveBeenCalledWith(post.id);
-  });
+    // Wait for async delete to complete
+    await new Promise(resolve => setTimeout(resolve, 10));
 
-  it('should not render delete button if onDelete callback is not provided', async () => {
-    await createPost({ title: 'Post 1', content: [] });
-
-    await renderPostList(container); // No onDelete callback
-
-    const deleteButtons = container.querySelectorAll('[data-action="delete-post"]');
-    expect(deleteButtons).toHaveLength(0);
+    // Verify post is now trashed
+    const trashedPosts = await db.posts.where('status').equals('trashed').toArray();
+    expect(trashedPosts).toHaveLength(1);
+    expect(trashedPosts[0].id).toBe(post.id);
   });
 
   it('should stop event propagation on delete button click', async () => {
     const post = await createPost({ title: 'Test Post', content: [] });
-    const onDelete = vi.fn();
-    const onPostSelect = vi.fn();
 
-    await renderPostList(container, { onDelete, onPostSelect });
+    await renderPostList(container, { router: mockRouter });
+
+    mockRouter.navigate.mockClear(); // Clear any previous calls
 
     const deleteButton = container.querySelector('[data-action="delete-post"]');
     deleteButton.click();
 
-    // onDelete should be called
-    expect(onDelete).toHaveBeenCalledWith(post.id);
-
-    // onPostSelect should NOT be called (event should not bubble to post item)
-    expect(onPostSelect).not.toHaveBeenCalled();
+    // router.navigate should NOT be called for post selection (event should not bubble)
+    // Note: It will be called for handleRoute refresh, but not for post navigation
+    const navigateCalls = mockRouter.navigate.mock.calls;
+    const hasPostNavigation = navigateCalls.some(call => call[0].startsWith('/posts/') && call[0].length > 7);
+    expect(hasPostNavigation).toBe(false);
   });
 });

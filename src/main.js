@@ -5,9 +5,12 @@ import List from '@editorjs/list';
 import Paragraph from '@editorjs/paragraph';
 import ImageTool from '@editorjs/image';
 import { AutoSave } from './core/auto-save.js';
+import { Router } from './core/router.js';
 import { renderPostList } from './components/post-list.js';
 import { renderTrashView } from './components/trash-view.js';
+import { renderSettingsView } from './components/settings-view.js';
 import { createPost, getMostRecentPost, deletePost, setStatus } from './core/storage.js';
+import { loadTheme, getDefaultTheme } from './core/theme-engine.js';
 import { saveImage } from './core/image-storage.js';
 import { AltTextTune } from './blocks/alt-text-tune.js';
 import { optimizeImage } from './utils/image-optimizer.js';
@@ -197,11 +200,19 @@ const editor = new EditorJS({
   onReady: async () => {
     console.log('EditorJS is ready!');
 
+    // Load default theme for editor preview
+    const defaultTheme = await getDefaultTheme();
+    await loadTheme(defaultTheme);
+    console.log('Loaded default theme:', defaultTheme);
+
     // Get title input element
     const titleInput = document.getElementById('post-title');
 
     // Initialize auto-save with title element
     const autoSave = new AutoSave(editor, titleInput);
+
+    // Initialize router
+    const router = new Router();
 
     // Add event listener to title input for auto-save
     titleInput.addEventListener('input', () => {
@@ -211,170 +222,104 @@ const editor = new EditorJS({
     // Listen for status changes (minimal - only refresh list on save)
     autoSave.on('statusChange', async (status) => {
       if (status === 'saved') {
-        // Refresh post list after save
-        await refreshPostList();
+        // Refresh current view after save
+        router.handleRoute();
       }
     });
 
-    // Current view state
-    let currentView = 'posts'; // 'posts' or 'trash'
-
-    // Function to refresh the post list
-    async function refreshPostList() {
+    // Helper: Render post list with current filter
+    async function renderPosts(filter = 'all') {
       const sidebar = document.getElementById('post-list-sidebar');
       await renderPostList(sidebar, {
         currentPostId: autoSave.postId,
-        onNewPost: handleNewPost,
-        onPostSelect: handlePostSelect,
-        onDelete: handleDelete,
-        onViewTrash: handleViewTrash,
+        filter,
+        router, // Pass router to component
       });
     }
 
-    // Function to show trash view
-    async function showTrashView() {
+    // Helper: Render trash view
+    async function renderTrash() {
       const sidebar = document.getElementById('post-list-sidebar');
       await renderTrashView(sidebar, {
-        onRestore: handleRestore,
-        onDeletePermanent: handleDeletePermanent,
-        onClose: handleCloseTrash,
-        onPostSelect: handleTrashPostSelect,
+        router, // Pass router to component
+        onRestore: async (postId) => {
+          await setStatus(postId, 'draft');
+          router.handleRoute(); // Refresh view
+        },
+        onDeletePermanent: async (postId) => {
+          const confirmed = window.confirm(
+            'Are you sure you want to permanently delete this post? This cannot be undone.'
+          );
+          if (confirmed) {
+            await deletePost(postId, { permanent: true });
+            router.handleRoute(); // Refresh view
+          }
+        },
+        onPostSelect: async (postId) => {
+          await autoSave.load(postId);
+        },
       });
     }
 
-    // Handle "New Post" button click
-    async function handleNewPost() {
-      // Clear the editor and title
-      await editor.clear();
-      titleInput.value = '';
+    // Route: All posts
+    router.on('/posts', async () => {
+      await renderPosts('all');
 
-      // Create a new post
-      const newPost = await createPost({
-        title: 'Untitled',
-        content: { blocks: [] },
-      });
-
-      // Set the autoSave to track this new post
-      autoSave.postId = newPost.id;
-
-      // Refresh post list
-      await refreshPostList();
-
-      // Focus the title input
-      titleInput.focus();
-
-      console.log('Created new post:', newPost.id);
-    }
-
-    // Handle post selection from list
-    async function handlePostSelect(postId) {
-      console.log('Loading post:', postId);
-
-      // Load the selected post
-      await autoSave.load(postId);
-
-      // Refresh post list to update active state
-      await refreshPostList();
-    }
-
-    // Handle delete post
-    async function handleDelete(postId) {
-      console.log('Deleting post:', postId);
-
-      // Soft delete (move to trash)
-      await deletePost(postId);
-
-      // If we deleted the currently active post, clear the editor and load another
-      if (autoSave.postId === postId) {
-        // Clear editor and title
-        await editor.clear();
-        titleInput.value = '';
-        autoSave.postId = null;
-
-        // Try to load the most recent post
+      // Auto-load most recent post if nothing is currently loaded
+      if (!autoSave.postId) {
         const mostRecent = await getMostRecentPost();
         if (mostRecent) {
+          console.log('Loading most recent post:', mostRecent.title);
           await autoSave.load(mostRecent.id);
         }
       }
+    });
 
-      // Refresh post list
-      await refreshPostList();
+    // Route: Drafts filter
+    router.on('/posts/drafts', async () => {
+      await renderPosts('draft');
+    });
 
-      console.log('Post moved to trash');
-    }
+    // Route: Published filter
+    router.on('/posts/published', async () => {
+      await renderPosts('published');
+    });
 
-    // Handle view trash button
-    async function handleViewTrash() {
-      console.log('Viewing trash');
-      currentView = 'trash';
-      await showTrashView();
-    }
+    // Route: Specific post (dynamic)
+    router.on('/posts/:id', async ({ id }) => {
+      await autoSave.load(id);
+      await renderPosts('all'); // Render list with this post active
+    });
 
-    // Handle close trash view
-    async function handleCloseTrash() {
-      console.log('Closing trash view');
-      currentView = 'posts';
-      await refreshPostList();
-    }
+    // Route: Trash view
+    router.on('/trash', async () => {
+      await renderTrash();
+    });
 
-    // Handle viewing a trashed post
-    async function handleTrashPostSelect(postId) {
-      console.log('Viewing trashed post:', postId);
+    // Route: Settings
+    router.on('/settings', async () => {
+      const sidebar = document.getElementById('post-list-sidebar');
+      await renderSettingsView(sidebar, { router });
+    });
 
-      // Load the trashed post into the editor
-      await autoSave.load(postId);
-    }
+    // Route: Root - redirect to /posts
+    router.on('/', async () => {
+      router.navigate('/posts', { replace: true });
+    });
 
-    // Handle restore post from trash
-    async function handleRestore(postId) {
-      console.log('Restoring post:', postId);
+    // Not found handler
+    router.onNotFound((path) => {
+      console.warn('Route not found:', path);
+      router.navigate('/posts', { replace: true });
+    });
 
-      // Restore to draft status
-      await setStatus(postId, 'draft');
-
-      // Refresh trash view
-      await showTrashView();
-
-      console.log('Post restored');
-    }
-
-    // Handle permanent delete
-    async function handleDeletePermanent(postId) {
-      console.log('Permanently deleting post:', postId);
-
-      // Confirm before permanent delete
-      const confirmed = window.confirm(
-        'Are you sure you want to permanently delete this post? This cannot be undone.'
-      );
-
-      if (!confirmed) {
-        return;
-      }
-
-      // Permanently delete
-      await deletePost(postId, { permanent: true });
-
-      // Refresh trash view
-      await showTrashView();
-
-      console.log('Post permanently deleted');
-    }
-
-    // Auto-load most recent post
-    const mostRecent = await getMostRecentPost();
-
-    if (mostRecent) {
-      console.log('Loading most recent post:', mostRecent.title);
-      await autoSave.load(mostRecent.id);
-    }
-
-    // Initial render of post list
-    await refreshPostList();
-
-    // Make autoSave and refreshPostList accessible for debugging
+    // Make instances accessible for debugging
     window.autoSave = autoSave;
-    window.refreshPostList = refreshPostList;
+    window.router = router;
+
+    // Start the router (handle initial route)
+    // This will trigger the appropriate route handler based on current URL
+    router.handleRoute();
   },
 
   onChange: (api, event) => {

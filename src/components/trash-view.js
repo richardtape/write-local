@@ -24,13 +24,13 @@ function formatRelativeTime(timestamp) {
  * Render the trash view component
  * @param {HTMLElement} container - Container element to render into
  * @param {Object} options - Configuration options
+ * @param {Router} options.router - Router instance for navigation
  * @param {Function} options.onRestore - Callback when a post is restored
  * @param {Function} options.onDeletePermanent - Callback when a post is permanently deleted
- * @param {Function} options.onClose - Callback when close/back button is clicked
  * @param {Function} options.onPostSelect - Callback when a post is selected to view
  */
 export async function renderTrashView(container, options = {}) {
-  const { onRestore, onDeletePermanent, onClose, onPostSelect } = options;
+  const { router, onRestore, onDeletePermanent, onPostSelect } = options;
 
   // Clear container
   container.innerHTML = '';
@@ -52,9 +52,9 @@ export async function renderTrashView(container, options = {}) {
 
   // Add click handler for close button
   const closeBtn = header.querySelector('[data-action="close-trash"]');
-  if (closeBtn && onClose) {
-    closeBtn.addEventListener('click', onClose);
-  }
+  closeBtn.addEventListener('click', () => {
+    router.navigate('/posts');
+  });
 
   // Create trash list container
   const trashList = document.createElement('div');

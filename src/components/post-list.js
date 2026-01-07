@@ -1,4 +1,4 @@
-import { listPosts } from '../core/storage.js';
+import { listPosts, createPost, deletePost } from '../core/storage.js';
 
 /**
  * Format relative time (e.g., "2 hours ago")
@@ -24,19 +24,12 @@ function formatRelativeTime(timestamp) {
  * Render the post list component
  * @param {HTMLElement} container - Container element to render into
  * @param {Object} options - Configuration options
- * @param {Function} options.onNewPost - Callback when "New Post" is clicked
- * @param {Function} options.onPostSelect - Callback when a post is selected
- * @param {Function} options.onDelete - Callback when a post is deleted
- * @param {Function} options.onViewTrash - Callback when "View Trash" is clicked
+ * @param {Router} options.router - Router instance for navigation
+ * @param {string} options.filter - Current filter ('all', 'draft', 'published')
  * @param {string} options.currentPostId - ID of currently active post
  */
 export async function renderPostList(container, options = {}) {
-  const { onNewPost, onPostSelect, onDelete, onViewTrash, currentPostId } = options;
-
-  // Store current filter state
-  if (!container._currentFilter) {
-    container._currentFilter = 'all';
-  }
+  const { router, filter = 'all', currentPostId } = options;
 
   // Clear container
   container.innerHTML = '';
@@ -52,9 +45,35 @@ export async function renderPostList(container, options = {}) {
 
   // Add click handler for "New Post" button
   const newPostBtn = header.querySelector('[data-action="new-post"]');
-  if (newPostBtn && onNewPost) {
-    newPostBtn.addEventListener('click', onNewPost);
-  }
+  newPostBtn.addEventListener('click', async () => {
+    // Clear the editor and title
+    if (window.editor) {
+      await window.editor.clear();
+    }
+    const titleInput = document.getElementById('post-title');
+    if (titleInput) {
+      titleInput.value = '';
+    }
+
+    // Create a new post
+    const newPost = await createPost({
+      title: 'Untitled',
+      content: { blocks: [] },
+    });
+
+    // Set the autoSave to track this new post
+    if (window.autoSave) {
+      window.autoSave.postId = newPost.id;
+    }
+
+    // Navigate to posts view (which will refresh the list)
+    router.navigate('/posts');
+
+    // Focus the title input
+    if (titleInput) {
+      titleInput.focus();
+    }
+  });
 
   // Get all posts and count by status
   const allPosts = await listPosts();
@@ -65,13 +84,13 @@ export async function renderPostList(container, options = {}) {
   const filterBar = document.createElement('div');
   filterBar.className = 'post-list-filters';
   filterBar.innerHTML = `
-    <button class="filter-btn ${container._currentFilter === 'all' ? 'active' : ''}" data-filter="all">
+    <button class="filter-btn ${filter === 'all' ? 'active' : ''}" data-filter="all">
       All (${allPosts.length})
     </button>
-    <button class="filter-btn ${container._currentFilter === 'draft' ? 'active' : ''}" data-filter="draft">
+    <button class="filter-btn ${filter === 'draft' ? 'active' : ''}" data-filter="draft">
       Drafts (${draftPosts.length})
     </button>
-    <button class="filter-btn ${container._currentFilter === 'published' ? 'active' : ''}" data-filter="published">
+    <button class="filter-btn ${filter === 'published' ? 'active' : ''}" data-filter="published">
       Published (${publishedPosts.length})
     </button>
   `;
@@ -80,18 +99,24 @@ export async function renderPostList(container, options = {}) {
   // Add click handlers for filter buttons
   const filterButtons = filterBar.querySelectorAll('.filter-btn');
   filterButtons.forEach(btn => {
-    btn.addEventListener('click', async () => {
-      container._currentFilter = btn.dataset.filter;
-      await renderPostList(container, options);
+    btn.addEventListener('click', () => {
+      const selectedFilter = btn.dataset.filter;
+      if (selectedFilter === 'all') {
+        router.navigate('/posts');
+      } else if (selectedFilter === 'draft') {
+        router.navigate('/posts/drafts');
+      } else if (selectedFilter === 'published') {
+        router.navigate('/posts/published');
+      }
     });
   });
 
   // Get posts based on current filter
   let posts;
-  if (container._currentFilter === 'all') {
+  if (filter === 'all') {
     posts = allPosts;
   } else {
-    posts = await listPosts({ status: container._currentFilter });
+    posts = await listPosts({ status: filter });
   }
 
   // Create posts list container
@@ -110,11 +135,6 @@ export async function renderPostList(container, options = {}) {
     const postItem = document.createElement('div');
     postItem.className = `post-item ${post.id === currentPostId ? 'active' : ''}`;
 
-    // Build delete button HTML if callback provided
-    const deleteButtonHTML = onDelete
-      ? '<button class="btn-delete-post" data-action="delete-post" title="Delete post">×</button>'
-      : '';
-
     postItem.innerHTML = `
       <div class="post-item-content">
         <div class="post-item-title">${post.title}</div>
@@ -123,48 +143,74 @@ export async function renderPostList(container, options = {}) {
           <span class="post-updated">Updated ${formatRelativeTime(post.updatedAt)}</span>
         </div>
       </div>
-      ${deleteButtonHTML}
+      <button class="btn-delete-post" data-action="delete-post" title="Delete post">×</button>
     `;
 
     // Add click handler for post selection
-    if (onPostSelect) {
-      postItem.addEventListener('click', (e) => {
-        // Only select if not clicking delete button
-        if (!e.target.closest('[data-action="delete-post"]')) {
-          onPostSelect(post.id);
-        }
-      });
-    }
+    postItem.addEventListener('click', (e) => {
+      // Only select if not clicking delete button
+      if (!e.target.closest('[data-action="delete-post"]')) {
+        router.navigate(`/posts/${post.id}`);
+      }
+    });
 
     // Add click handler for delete button
-    if (onDelete) {
-      const deleteButton = postItem.querySelector('[data-action="delete-post"]');
-      if (deleteButton) {
-        deleteButton.addEventListener('click', (e) => {
-          e.stopPropagation(); // Prevent post selection
-          onDelete(post.id);
-        });
+    const deleteButton = postItem.querySelector('[data-action="delete-post"]');
+    deleteButton.addEventListener('click', async (e) => {
+      e.stopPropagation(); // Prevent post selection
+
+      // Soft delete (move to trash)
+      await deletePost(post.id);
+
+      // If we deleted the currently active post, clear the editor and load another
+      if (window.autoSave && window.autoSave.postId === post.id) {
+        // Clear editor and title
+        if (window.editor) {
+          await window.editor.clear();
+        }
+        const titleInput = document.getElementById('post-title');
+        if (titleInput) {
+          titleInput.value = '';
+        }
+        window.autoSave.postId = null;
+
+        // Try to load the most recent post
+        const allPostsAfterDelete = await listPosts();
+        if (allPostsAfterDelete.length > 0) {
+          await window.autoSave.load(allPostsAfterDelete[0].id);
+        }
       }
-    }
+
+      // Refresh current view
+      router.handleRoute();
+    });
 
     postsList.appendChild(postItem);
   });
 
   container.appendChild(postsList);
 
-  // Add trash button at the bottom
-  if (onViewTrash) {
-    const trashButton = document.createElement('div');
-    trashButton.className = 'trash-button-container';
-    trashButton.innerHTML = `
-      <button class="btn-view-trash" data-action="view-trash">
-        🗑️ View Trash
-      </button>
-    `;
+  // Add footer buttons (trash and settings)
+  const footerButtons = document.createElement('div');
+  footerButtons.className = 'post-list-footer';
+  footerButtons.innerHTML = `
+    <button class="btn-view-trash" data-action="view-trash">
+      🗑️ View Trash
+    </button>
+    <button class="btn-settings" data-action="settings">
+      ⚙️ Settings
+    </button>
+  `;
 
-    const btn = trashButton.querySelector('[data-action="view-trash"]');
-    btn.addEventListener('click', onViewTrash);
+  const trashBtn = footerButtons.querySelector('[data-action="view-trash"]');
+  trashBtn.addEventListener('click', () => {
+    router.navigate('/trash');
+  });
 
-    container.appendChild(trashButton);
-  }
+  const settingsBtn = footerButtons.querySelector('[data-action="settings"]');
+  settingsBtn.addEventListener('click', () => {
+    router.navigate('/settings');
+  });
+
+  container.appendChild(footerButtons);
 }

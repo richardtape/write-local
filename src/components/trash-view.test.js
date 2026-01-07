@@ -118,14 +118,15 @@ describe('TrashView Component', () => {
     expect(backButton).toBeTruthy();
   });
 
-  it('should call onClose callback when close button is clicked', async () => {
-    const onClose = vi.fn();
-    await renderTrashView(container, { onClose });
+  it('should navigate to /posts when close button is clicked', async () => {
+    const mockRouter = { navigate: vi.fn() };
+    await renderTrashView(container, { router: mockRouter });
 
     const closeButton = container.querySelector('[data-action="close-trash"]');
     closeButton.click();
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+    expect(mockRouter.navigate).toHaveBeenCalledWith('/posts');
   });
 
   it('should display trash count in header', async () => {
