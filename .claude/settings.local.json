@@ -4,7 +4,8 @@
       "Bash(npm create:*)",
       "Bash(cat:*)",
       "WebSearch",
-      "WebFetch(domain:developers.netlify.com)"
+      "WebFetch(domain:developers.netlify.com)",
+      "Bash(ls:*)"
     ]
   }
 }

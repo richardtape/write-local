@@ -10,9 +10,11 @@
  * @param {string} block.type - Block type (paragraph, header, list, etc.)
  * @param {Object} block.data - Block data
  * @param {Object} [block.tunes] - Block tunes data (e.g., altText)
+ * @param {Object} [options] - Rendering options
+ * @param {string} [options.imagePathPrefix='./images/'] - Prefix for image paths
  * @returns {string} HTML string
  */
-export function renderBlockToHTML(block) {
+export function renderBlockToHTML(block, options = {}) {
   if (!block || !block.type) {
     return '';
   }
@@ -34,7 +36,7 @@ export function renderBlockToHTML(block) {
       return renderCode(block.data);
 
     case 'image':
-      return renderImage(block.data, block.tunes);
+      return renderImage(block.data, block.tunes, options);
 
     default:
       return '';
@@ -44,15 +46,17 @@ export function renderBlockToHTML(block) {
 /**
  * Render multiple EditorJS blocks to HTML
  * @param {Array} blocks - Array of EditorJS block objects
+ * @param {Object} [options] - Rendering options
+ * @param {string} [options.imagePathPrefix='./images/'] - Prefix for image paths
  * @returns {string} HTML string with newlines between blocks
  */
-export function renderBlocksToHTML(blocks) {
+export function renderBlocksToHTML(blocks, options = {}) {
   if (!blocks || !Array.isArray(blocks)) {
     return '';
   }
 
   return blocks
-    .map((block) => renderBlockToHTML(block))
+    .map((block) => renderBlockToHTML(block, options))
     .filter((html) => html !== '')
     .join('\n');
 }
@@ -150,10 +154,13 @@ function renderCode(data) {
  * @param {Object} [tunes] - Block tunes data
  * @param {Object} [tunes.altText] - Alt text tune data
  * @param {string} [tunes.altText.alt] - Alt text for accessibility
+ * @param {Object} [options] - Rendering options
+ * @param {string} [options.imagePathPrefix='./images/'] - Prefix for image paths
  * @returns {string} HTML figure element with img
  */
-function renderImage(data, tunes) {
+function renderImage(data, tunes, options = {}) {
   const file = data?.file;
+  const imagePathPrefix = options.imagePathPrefix ?? './images/';
 
   // Handle missing file data
   if (!file || !file.filename) {
@@ -162,7 +169,7 @@ function renderImage(data, tunes) {
 
   // Convert filename to WebP extension for optimized export
   const webpFilename = convertToWebpFilename(file.filename);
-  const src = `./images/${webpFilename}`;
+  const src = `${imagePathPrefix}${webpFilename}`;
   // Alt text comes from the altText tune, not from block data
   const alt = tunes?.altText?.alt ?? '';
   const caption = data?.caption;

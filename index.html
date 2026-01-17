@@ -477,14 +477,103 @@
         color: #666;
       }
 
+      .settings-item input[type="text"] {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: white;
+      }
+
+      .settings-item input[type="text"]:focus {
+        outline: none;
+        border-color: #0066cc;
+      }
+
+      .btn-primary {
+        padding: 0.75rem 1.5rem;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .btn-primary:hover {
+        background: #0052a3;
+      }
+
+      .save-status {
+        margin-top: 1rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.3s;
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+
+      .save-status.visible {
+        opacity: 1;
+      }
+
       /* Editor Toolbar */
       .editor-toolbar {
         display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
+        justify-content: space-between;
+        align-items: center;
         padding: 1rem 3rem;
         border-bottom: 1px solid #e0e0e0;
         background: #fafafa;
+      }
+
+      .toolbar-buttons {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      /* Post Theme Selector */
+      .post-theme-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .post-theme-selector label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .post-theme-selector select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: white;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+
+      .post-theme-selector select:hover:not(:disabled) {
+        border-color: #0066cc;
+      }
+
+      .post-theme-selector select:focus {
+        outline: none;
+        border-color: #0066cc;
+      }
+
+      .post-theme-selector select:disabled {
+        background: #f5f5f5;
+        color: #999;
+        cursor: not-allowed;
       }
 
       .btn-export {
@@ -804,12 +893,15 @@
       <!-- Editor Area -->
       <div id="editor-area">
         <div class="editor-toolbar">
-          <button class="btn-publish" id="btn-publish">
-            Publish
-          </button>
-          <button class="btn-export" id="btn-export" disabled>
-            Export ZIP
-          </button>
+          <div id="post-theme-selector-container"></div>
+          <div class="toolbar-buttons">
+            <button class="btn-publish" id="btn-publish">
+              Publish
+            </button>
+            <button class="btn-export" id="btn-export" disabled>
+              Export ZIP
+            </button>
+          </div>
         </div>
         <div id="editor-container" class="post-content">
           <input

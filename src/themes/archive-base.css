@@ -1,0 +1,102 @@
+/**
+ * Archive Base Theme - CSS Variables with Default Values
+ * All archive themes should override these variables, not the actual styles
+ */
+
+:root {
+  /* Archive-specific typography */
+  --archive-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --archive-title-size: clamp(2rem, 1.5rem + 2.5vw, 3rem);
+  --archive-post-title-size: clamp(1.25rem, 1rem + 1vw, 1.5rem);
+  --archive-date-size: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);
+  --archive-excerpt-size: clamp(0.9375rem, 0.875rem + 0.25vw, 1rem);
+
+  /* Colors */
+  --archive-bg: #ffffff;
+  --archive-text: #1a1a1a;
+  --archive-text-light: #666666;
+  --archive-link: #0066cc;
+  --archive-link-hover: #0052a3;
+
+  /* Spacing */
+  --archive-max-width: 65ch;
+  --archive-padding: clamp(1rem, 0.5rem + 2vw, 2rem);
+  --archive-item-gap: clamp(1.5rem, 1rem + 1vw, 2rem);
+
+  /* Line heights */
+  --archive-line-height: 1.6;
+}
+
+/**
+ * Base Styles for Archive Content
+ */
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--archive-bg);
+}
+
+.archive-content {
+  max-width: var(--archive-max-width);
+  margin: 0 auto;
+  padding: var(--archive-padding);
+  font-family: var(--archive-font-family);
+  background: var(--archive-bg);
+  color: var(--archive-text);
+  line-height: var(--archive-line-height);
+}
+
+.archive-title {
+  font-size: var(--archive-title-size);
+  font-weight: 700;
+  margin: 0 0 var(--archive-item-gap) 0;
+  color: var(--archive-text);
+  line-height: 1.2;
+}
+
+.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.post-item {
+  margin-bottom: var(--archive-item-gap);
+  padding-bottom: var(--archive-item-gap);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.post-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.post-link {
+  font-size: var(--archive-post-title-size);
+  font-weight: 600;
+  color: var(--archive-link);
+  text-decoration: none;
+  display: block;
+  line-height: 1.3;
+}
+
+.post-link:hover {
+  color: var(--archive-link-hover);
+  text-decoration: underline;
+}
+
+.post-date {
+  font-size: var(--archive-date-size);
+  color: var(--archive-text-light);
+  display: block;
+  margin-top: 0.25em;
+}
+
+.post-excerpt {
+  font-size: var(--archive-excerpt-size);
+  color: var(--archive-text);
+  line-height: var(--archive-line-height);
+  margin: 0.5em 0 0 0;
+}

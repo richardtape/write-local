@@ -6,6 +6,7 @@ import { generateSlug } from '../utils/slug.js';
 export const db = new Dexie('WriteLocal');
 
 // Define database schema
+// Version 1: Original schema
 db.version(1).stores({
   posts: 'id, slug, status, updatedAt, [status+updatedAt]',
   images: 'id, postId',
@@ -13,16 +14,31 @@ db.version(1).stores({
   settings: 'key',
 });
 
+// Version 2: Add sites table and siteId index on posts
+db.version(2).stores({
+  posts: 'id, slug, status, updatedAt, siteId, [status+updatedAt], [siteId+status]',
+  images: 'id, postId',
+  themes: 'id, isDefault',
+  settings: 'key',
+  sites: 'id, platform, updatedAt',
+});
+
 /**
  * Create a new post
  * @param {Object} data - Post data
  * @param {string} data.title - Post title
  * @param {Array} data.content - EditorJS content blocks
- * @param {string} [data.theme] - Theme ID (optional)
+ * @param {string} [data.theme] - Theme ID (optional, defaults to user's default theme)
  * @returns {Promise<Object>} Created post
  */
-export async function createPost({ title, content, theme = 'default' }) {
+export async function createPost({ title, content, theme }) {
   const now = Date.now();
+
+  // If no theme specified, use the default theme from settings
+  if (!theme) {
+    const defaultThemeSetting = await db.settings.get('defaultTheme');
+    theme = defaultThemeSetting?.value || 'minimal'; // Fallback to 'minimal' if not set
+  }
 
   const post = {
     id: nanoid(),
@@ -164,4 +180,131 @@ export async function getMostRecentPost() {
   }
 
   return posts[0]; // First post is most recent (sorted by updatedAt descending)
+}
+
+// =============================================================================
+// Site Storage Functions
+// =============================================================================
+
+/**
+ * Create a new site
+ * @param {Object} data - Site data
+ * @param {string} data.name - Site name (internal identifier)
+ * @param {string} [data.archiveTitle] - Archive page title (defaults to name)
+ * @param {string} [data.archiveTemplate='simple-list'] - Archive template
+ * @param {string} [data.archiveTheme='minimal'] - Archive theme
+ * @returns {Promise<Object>} Created site
+ */
+export async function createSite({
+  name,
+  archiveTitle,
+  archiveTemplate = 'simple-list',
+  archiveTheme = 'minimal',
+}) {
+  const now = Date.now();
+
+  const site = {
+    id: nanoid(),
+    name,
+    // Archive configuration (platform-agnostic)
+    archiveTitle: archiveTitle || name, // Default to site name
+    archiveTemplate,
+    archiveTheme,
+    // Platform deployment fields (null until deployed)
+    platform: null,
+    platformSiteId: null,
+    platformUrl: null,
+    // Timestamps
+    createdAt: now,
+    updatedAt: now,
+    lastPublishedAt: null,
+  };
+
+  await db.sites.add(site);
+  return site;
+}
+
+/**
+ * Get a site by ID
+ * @param {string} id - Site ID
+ * @returns {Promise<Object|undefined>} Site or undefined if not found
+ */
+export async function getSite(id) {
+  return await db.sites.get(id);
+}
+
+/**
+ * Update a site
+ * @param {string} id - Site ID
+ * @param {Object} updates - Fields to update
+ * @returns {Promise<Object>} Updated site
+ */
+export async function updateSite(id, updates) {
+  const existing = await db.sites.get(id);
+  if (!existing) {
+    throw new Error(`Site with id ${id} not found`);
+  }
+
+  const updatedSite = {
+    ...existing,
+    ...updates,
+    updatedAt: Date.now(),
+  };
+
+  await db.sites.put(updatedSite);
+  return updatedSite;
+}
+
+/**
+ * Delete a site
+ * @param {string} id - Site ID
+ * @returns {Promise<void>}
+ */
+export async function deleteSite(id) {
+  await db.sites.delete(id);
+}
+
+/**
+ * List all sites
+ * @returns {Promise<Array>} Array of sites, sorted by updatedAt descending
+ */
+export async function listSites() {
+  const sites = await db.sites.toArray();
+  return sites.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/**
+ * Get posts belonging to a site
+ * @param {string} siteId - Site ID
+ * @param {Object} [options] - Filter options
+ * @param {string} [options.status] - Filter by status (e.g., 'published')
+ * @returns {Promise<Array>} Array of posts belonging to the site
+ */
+export async function getPostsBySite(siteId, options = {}) {
+  let posts;
+
+  if (options.status) {
+    // Use compound index for efficient query
+    posts = await db.posts
+      .where('[siteId+status]')
+      .equals([siteId, options.status])
+      .toArray();
+  } else {
+    // Get all posts for site, excluding trashed
+    posts = await db.posts
+      .where('siteId')
+      .equals(siteId)
+      .toArray();
+
+    // Filter out trashed posts
+    posts = posts.filter(p => p.status !== 'trashed');
+  }
+
+  // Sort by publishedAt descending (most recently published first)
+  // For unpublished posts, fall back to updatedAt
+  return posts.sort((a, b) => {
+    const aTime = a.publishedAt || a.updatedAt;
+    const bTime = b.publishedAt || b.updatedAt;
+    return bTime - aTime;
+  });
 }

@@ -10,8 +10,8 @@
 import { hasToken, saveToken, deleteToken, getToken } from '../publisher/auth-storage.js';
 import { generateAuthUrl, openAuthPopup } from '../publisher/netlify-oauth.js';
 import { listSites } from '../publisher/netlify-api.js';
-import { publishToNetlify } from '../publisher/deploy-service.js';
-import { setStatus } from '../core/storage.js';
+import { publishSiteToNetlify } from '../publisher/deploy-service.js';
+import { setStatus, updatePost, getPost, listSites as listLocalSites, createSite, getPostsBySite } from '../core/storage.js';
 
 /**
  * UI States
@@ -109,20 +109,35 @@ async function renderConnectedState(content, { postId, router }) {
   // Show loading while fetching sites
   content.innerHTML = `
     <div class="publish-loading">
-      <p>Loading your Netlify sites...</p>
+      <p>Checking your blog configuration...</p>
     </div>
   `;
 
-  // Fetch user's sites
-  let sites = [];
-  try {
-    const tokenData = await getToken('netlify');
-    sites = await listSites(tokenData.accessToken);
-  } catch (error) {
-    console.error('Failed to load sites:', error);
-    // Continue with empty sites list
+  // Get the current post
+  const post = await getPost(postId);
+  if (!post) {
+    content.innerHTML = `<div class="publish-error"><p>Post not found.</p></div>`;
+    return;
   }
 
+  // Check if a local site exists
+  const localSites = await listLocalSites();
+  const hasSite = localSites.length > 0;
+  const site = hasSite ? localSites[0] : null; // For now, we only support one site
+
+  if (!hasSite) {
+    // No site exists - show create blog UI
+    await renderCreateBlogUI(content, { postId, router, post });
+  } else {
+    // Site exists - show publish options
+    await renderPublishOptions(content, { postId, router, post, site });
+  }
+}
+
+/**
+ * Render the "Create Blog" UI for first-time publishers
+ */
+async function renderCreateBlogUI(content, { postId, router, post }) {
   content.innerHTML = `
     <div class="publish-options" data-state="connected">
       <div class="netlify-connected">
@@ -130,18 +145,27 @@ async function renderConnectedState(content, { postId, router }) {
         <button class="btn-disconnect" data-action="disconnect">Disconnect</button>
       </div>
 
+      <h3 style="margin: 1.5rem 0 0.5rem;">Create Your Blog</h3>
+      <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">
+        You'll be publishing "${post.title}" to a new blog site. You can configure your blog settings later.
+      </p>
+
       <div class="site-selection">
-        <label for="netlify-site-select">Deploy to:</label>
-        <select id="netlify-site-select">
-          <option value="new">Create new site</option>
-          ${sites.map(site => `
-            <option value="${site.id}">${site.name}</option>
-          `).join('')}
-        </select>
+        <label for="blog-name-input">Blog Name:</label>
+        <input
+          type="text"
+          id="blog-name-input"
+          placeholder="My Awesome Blog"
+          value="My Blog"
+          style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.875rem;"
+        >
+        <p style="color: #888; font-size: 0.8rem; margin-top: 0.5rem;">
+          This will be the title of your blog's home page.
+        </p>
       </div>
 
-      <button class="btn-publish" data-action="publish">
-        Publish to Netlify
+      <button class="btn-publish" data-action="publish" style="margin-top: 1rem;">
+        Create Blog & Publish
       </button>
     </div>
   `;
@@ -150,7 +174,6 @@ async function renderConnectedState(content, { postId, router }) {
   const disconnectBtn = content.querySelector('[data-action="disconnect"]');
   disconnectBtn.addEventListener('click', async () => {
     await deleteToken('netlify');
-    // Re-render as disconnected
     const container = content.closest('.publish-content')?.parentElement;
     if (container) {
       await renderPublishView(container, { router, postId });
@@ -160,10 +183,86 @@ async function renderConnectedState(content, { postId, router }) {
   // Add publish handler
   const publishBtn = content.querySelector('[data-action="publish"]');
   publishBtn.addEventListener('click', async () => {
-    const siteSelect = content.querySelector('#netlify-site-select');
-    const selectedSiteId = siteSelect.value === 'new' ? null : siteSelect.value;
+    const blogNameInput = content.querySelector('#blog-name-input');
+    const blogName = blogNameInput.value.trim();
 
-    await startPublishing(content, { postId, siteId: selectedSiteId });
+    if (!blogName) {
+      alert('Please enter a blog name.');
+      return;
+    }
+
+    await startPublishingWithNewSite(content, { postId, blogName });
+  });
+}
+
+/**
+ * Render publish options when site already exists
+ */
+async function renderPublishOptions(content, { postId, router, post, site }) {
+  // Get all published posts for this site
+  const publishedPosts = await getPostsBySite(site.id, { status: 'published' });
+
+  // Check if current post is already published
+  const isPostPublished = post.status === 'published' && post.siteId === site.id;
+  const otherPublishedCount = isPostPublished ? publishedPosts.length - 1 : publishedPosts.length;
+
+  const publishActionText = isPostPublished ? 'Republish' : 'Publish';
+  const publishDescription = isPostPublished
+    ? `Updating "${post.title}" and ${otherPublishedCount} other post${otherPublishedCount !== 1 ? 's' : ''}`
+    : `Publishing "${post.title}"${otherPublishedCount > 0 ? ` with ${otherPublishedCount} other post${otherPublishedCount !== 1 ? 's' : ''}` : ''}`;
+
+  content.innerHTML = `
+    <div class="publish-options" data-state="connected">
+      <div class="netlify-connected">
+        <span class="connected-badge">✓ Connected to Netlify</span>
+        <button class="btn-disconnect" data-action="disconnect">Disconnect</button>
+      </div>
+
+      <h3 style="margin: 1.5rem 0 0.5rem;">Publish to Your Blog</h3>
+
+      <div style="background: #f5f5f5; padding: 1rem; border-radius: 6px; margin: 1rem 0;">
+        <div style="font-weight: 500; margin-bottom: 0.5rem;">${site.name}</div>
+        ${site.platformUrl ? `<div style="font-size: 0.85rem; color: #666;">${site.platformUrl}</div>` : ''}
+        ${site.lastPublishedAt ? `<div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">Last published: ${formatDate(site.lastPublishedAt)}</div>` : ''}
+      </div>
+
+      <div style="color: #666; font-size: 0.9rem; margin: 1rem 0;">
+        ${publishDescription}
+      </div>
+
+      <button class="btn-publish" data-action="publish">
+        ${publishActionText} Blog
+      </button>
+
+      <p style="color: #888; font-size: 0.8rem; margin-top: 1rem;">
+        Need to change blog settings? Go to <a href="#" data-action="go-settings" style="color: #0066cc; text-decoration: none;">Settings</a>
+      </p>
+    </div>
+  `;
+
+  // Add disconnect handler
+  const disconnectBtn = content.querySelector('[data-action="disconnect"]');
+  disconnectBtn.addEventListener('click', async () => {
+    await deleteToken('netlify');
+    const container = content.closest('.publish-content')?.parentElement;
+    if (container) {
+      await renderPublishView(container, { router, postId });
+    }
+  });
+
+  // Add settings link handler
+  const settingsLink = content.querySelector('[data-action="go-settings"]');
+  if (settingsLink) {
+    settingsLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      router.navigate('/settings');
+    });
+  }
+
+  // Add publish handler
+  const publishBtn = content.querySelector('[data-action="publish"]');
+  publishBtn.addEventListener('click', async () => {
+    await startPublishingToSite(content, { postId, siteId: site.id });
   });
 }
 
@@ -219,29 +318,106 @@ function startOAuthFlow({ postId, router, container }) {
 }
 
 /**
- * Start the publishing process
+ * Start publishing with a new site
  */
-async function startPublishing(content, { postId, siteId }) {
+async function startPublishingWithNewSite(content, { postId, blogName }) {
   // Show publishing state
   content.innerHTML = `
     <div class="publish-progress" data-state="publishing">
       <div class="progress-spinner"></div>
-      <p class="progress-status">Generating export bundle...</p>
+      <p class="progress-status">Creating your blog...</p>
     </div>
   `;
 
   const statusEl = content.querySelector('.progress-status');
 
   try {
-    const result = await publishToNetlify(postId, {
-      siteId,
+    // Step 1: Create the site in local storage
+    statusEl.textContent = 'Setting up blog configuration...';
+    const site = await createSite({
+      name: blogName,
+      archiveTitle: blogName,
+      archiveTemplate: 'simple-list',
+      archiveTheme: 'minimal',
+    });
+
+    // Step 2: Link post to site
+    statusEl.textContent = 'Linking post to blog...';
+    await updatePost(postId, { siteId: site.id });
+
+    // Step 3: Mark post as published
+    await setStatus(postId, 'published');
+
+    // Step 4: Publish to Netlify
+    const result = await publishSiteToNetlify(site.id, {
       onProgress: ({ message }) => {
         statusEl.textContent = message;
       },
     });
 
-    // Mark post as published
+    // Show success state
+    content.innerHTML = `
+      <div class="publish-success" data-state="success">
+        <div class="success-icon">✓</div>
+        <h3>Blog created and published!</h3>
+        <p>Your blog is now live at:</p>
+        <a href="${result.url}" target="_blank" class="site-url">${result.url}</a>
+        <button class="btn-view-site" onclick="window.open('${result.url}', '_blank')">
+          View Site
+        </button>
+      </div>
+    `;
+  } catch (error) {
+    // Show error state
+    content.innerHTML = `
+      <div class="publish-error" data-state="error">
+        <div class="error-icon">✕</div>
+        <h3>Publishing failed</h3>
+        <p class="error-message">${escapeHTML(error.message)}</p>
+        <button class="btn-retry" data-action="retry">Try Again</button>
+      </div>
+    `;
+
+    // Add retry handler
+    const retryBtn = content.querySelector('[data-action="retry"]');
+    retryBtn.addEventListener('click', () => {
+      startPublishingWithNewSite(content, { postId, blogName });
+    });
+  }
+}
+
+/**
+ * Start publishing to an existing site
+ */
+async function startPublishingToSite(content, { postId, siteId }) {
+  // Show publishing state
+  content.innerHTML = `
+    <div class="publish-progress" data-state="publishing">
+      <div class="progress-spinner"></div>
+      <p class="progress-status">Preparing to publish...</p>
+    </div>
+  `;
+
+  const statusEl = content.querySelector('.progress-status');
+
+  try {
+    // Step 1: Link post to site (if not already)
+    const post = await getPost(postId);
+    if (post.siteId !== siteId) {
+      statusEl.textContent = 'Linking post to blog...';
+      await updatePost(postId, { siteId });
+    }
+
+    // Step 2: Mark post as published
+    statusEl.textContent = 'Marking post as published...';
     await setStatus(postId, 'published');
+
+    // Step 3: Publish entire site to Netlify
+    const result = await publishSiteToNetlify(siteId, {
+      onProgress: ({ message }) => {
+        statusEl.textContent = message;
+      },
+    });
 
     // Show success state
     content.innerHTML = `
@@ -269,9 +445,23 @@ async function startPublishing(content, { postId, siteId }) {
     // Add retry handler
     const retryBtn = content.querySelector('[data-action="retry"]');
     retryBtn.addEventListener('click', () => {
-      startPublishing(content, { postId, siteId });
+      startPublishingToSite(content, { postId, siteId });
     });
   }
+}
+
+/**
+ * Format timestamp to readable date
+ */
+function formatDate(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 /**

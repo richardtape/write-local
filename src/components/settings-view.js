@@ -1,4 +1,5 @@
 import { getDefaultTheme, setDefaultTheme, loadTheme } from '../core/theme-engine.js';
+import { renderSiteSettings } from './site-settings.js';
 
 /**
  * Render the settings view
@@ -32,11 +33,19 @@ export async function renderSettingsView(container, options = {}) {
     });
   }
 
+  // Create site settings section container
+  const siteSettingsContainer = document.createElement('div');
+  siteSettingsContainer.className = 'site-settings-container';
+  container.appendChild(siteSettingsContainer);
+
+  // Render site settings
+  await renderSiteSettings(siteSettingsContainer, options);
+
   // Create themes section
   const themesSection = document.createElement('div');
   themesSection.className = 'settings-section';
   themesSection.innerHTML = `
-    <h3>Themes</h3>
+    <h3>Post Themes</h3>
     <div class="settings-item">
       <label for="default-theme-select">Default Theme</label>
       <select id="default-theme-select">

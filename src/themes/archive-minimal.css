@@ -1,0 +1,23 @@
+/**
+ * Archive Minimal Theme
+ * Clean, crisp design with high contrast and ample whitespace
+ * Matches the Minimal post theme
+ */
+
+:root {
+  /* Colors - High contrast for maximum readability */
+  --archive-bg: #ffffff;
+  --archive-text: #1a1a1a;
+  --archive-text-light: #555555;
+  --archive-link: #0066ff;
+  --archive-link-hover: #0044cc;
+
+  /* Typography - System fonts for familiarity */
+  --archive-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Line height - Extra loose for comfortable reading */
+  --archive-line-height: 1.6;
+
+  /* Spacing - Generous whitespace */
+  --archive-item-gap: clamp(1.75rem, 1.25rem + 1.5vw, 2.5rem);
+}

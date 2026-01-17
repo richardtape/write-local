@@ -7,10 +7,12 @@ This document tracks implementation progress, decisions, and reasoning to provid
 ## Current Status
 
 **Phase:** Phase 5 (Content Publishing) 🚧 IN PROGRESS
-**Last Updated:** 2026-01-16
+**Last Updated:** 2026-01-17
 **Development Approach:** Test-Driven Development (TDD)
 
-### 🚧 Phase 5 Progress (Netlify Publishing)
+### 🚧 Phase 5 Progress
+
+**Netlify Publishing (Complete):**
 - [x] MSW test infrastructure for mocking Netlify API
 - [x] Auth storage (token storage in IndexedDB)
 - [x] Netlify OAuth flow (popup-based authentication)
@@ -22,10 +24,19 @@ This document tracks implementation progress, decisions, and reasoning to provid
 - [x] Alt text fix (from block tunes to published HTML)
 - [x] Post status update after publishing
 
-### 📋 Remaining for Phase 5
-- [ ] Vercel integration
-- [ ] GitHub Pages integration
-- [ ] Multi-post blog architecture (one site with multiple posts)
+### 📋 Current Priority: Multi-Post Blog Architecture
+
+> **See [MULTI_POST_PLAN.md](./MULTI_POST_PLAN.md) for comprehensive implementation plan**
+
+Transform from single-post publishing to full blog with:
+- [x] **Phase A:** Data Model & Storage (sites table, siteId on posts) ✅
+- [x] **Phase B:** Excerpt Generator (first 50 words + "...") ✅
+- [x] **Phase C:** Archive Page Generator (simple-list, list-with-excerpts templates) ✅
+- [x] **Phase D:** Site Bundler (multi-post ZIP generation) ✅
+- [ ] **Phase E:** Site Settings UI (name, archive title, template, theme)
+- [ ] **Phase F:** Post Theme Selector (per-post theme in editor)
+- [ ] **Phase G:** Updated Publish Flow (site selection, full site deploy)
+- [ ] **Phase H:** Additional Platforms (Vercel, GitHub Pages)
 
 ### ✅ Completed
 - [x] Development environment setup
@@ -68,30 +79,34 @@ This document tracks implementation progress, decisions, and reasoning to provid
 - [x] **Export Button** (one-click export to ZIP)
 - [x] **Download Utility** (triggers browser file download)
 
-### 🚧 Next Priority: CONTENT PUBLISHING (Phase 5)
-The local writing experience is complete. Now users need to publish their blog content online!
+### 🚧 Next Priority: Multi-Post Blog Architecture
 
-> **Note:** The Write Local *app* stays local (that's the point!). Phase 5 is about publishing *user content* to hosting platforms like Netlify, Vercel, or GitHub Pages.
+> **See [MULTI_POST_PLAN.md](./MULTI_POST_PLAN.md) for the comprehensive implementation plan**
+
+The local writing experience is complete. Netlify publishing works for single posts. Now we need to transform to a proper blog architecture where users have one site with multiple posts.
 
 ### 📋 Next Steps
-1. **Content Publishing** (Phase 5 - **CURRENT PRIORITY FOR MVP**)
-   - ⏳ Publish modal UI (platform selection, progress, success/error states)
-   - ⏳ Netlify publishing (one-click publish user content via API)
-   - ⏳ Vercel publishing (alternative platform)
-   - ⏳ GitHub Pages publishing (free option)
-   - ⏳ OAuth authentication flows for each platform
+1. **Multi-Post Blog Architecture** (Phase 5 - **CURRENT PRIORITY FOR MVP**)
+   - ✅ Phase A: Data Model & Storage (sites table, siteId on posts)
+   - ✅ Phase B: Excerpt Generator (first 50 words + "...")
+   - ✅ Phase C: Archive Page Generator (two templates)
+   - ✅ Phase D: Site Bundler (multi-post ZIP generation)
+   - ⏳ Phase E: Site Settings UI (NEXT)
+   - ⏳ Phase F: Post Theme Selector
+   - ⏳ Phase G: Updated Publish Flow
+   - ⏳ Phase H: Additional Platforms (Vercel, GitHub Pages)
 2. **Deferred Features** (Post-v1.0)
-   - Per-post theme override selector
    - Additional themes (serif, dark)
    - Search/filter posts by title
    - Keyboard shortcuts
    - Distraction-free mode
    - YouTube embed block
    - Spacer block
+   - Configurable date format
 
 ### 📊 Test Status
-- **Total Tests:** 261 passing ✅
-  - Storage tests: 20
+- **Total Tests:** 376 passing ✅
+  - Storage tests: 20 + 50 (site storage)
   - Auto-save tests: 8
   - Post-list tests: 19
   - Trash-view tests: 12
@@ -104,16 +119,89 @@ The local writing experience is complete. Now users need to publish their blog c
   - Bundler tests: 12
   - Download utility tests: 4
   - Updated component tests: 24
-  - **NEW:** Auth storage tests: 5
-  - **NEW:** Netlify OAuth tests: 6
-  - **NEW:** Netlify API tests: 8
-  - **NEW:** Deploy service tests: 5
-  - **NEW:** Publish view tests: 13
+  - Auth storage tests: 5
+  - Netlify OAuth tests: 6
+  - Netlify API tests: 8
+  - Deploy service tests: 5
+  - Publish view tests: 13
+  - **NEW:** Excerpt generator tests: 24
+  - **NEW:** Archive generator tests: 27
+  - **NEW:** Site bundler tests: 18
 - **Test Coverage:** On track for 85%+ target
 
 ---
 
 ## Session Log
+
+### 2026-01-17: Multi-Post Blog Architecture (Phases A-D)
+
+#### Summary
+Implemented the core backend infrastructure for multi-post blog architecture. All tests passing (376 total).
+
+#### Phase A: Data Model & Storage
+- Added `sites` table to Dexie schema (version 2)
+- Added `siteId` index on posts with compound index `[siteId+status]`
+- Implemented site CRUD: `createSite`, `getSite`, `updateSite`, `deleteSite`, `listSites`
+- Implemented `getPostsBySite(siteId, { status })` for efficient site-post queries
+- **Platform-agnostic design**: Sites can exist without deployment (platform fields null)
+- **50 new tests** for site storage
+
+#### Phase B: Excerpt Generator
+- Created `src/exporter/excerpt-generator.js`
+- Extracts text from EditorJS blocks (paragraph, header, list, quote)
+- Strips HTML tags and decodes entities
+- Limits to 50 words by default with "..." ellipsis
+- `stripHTML()` utility exported for reuse
+- **24 new tests**
+
+#### Phase C: Archive Page Generator
+- Created `src/exporter/archive-generator.js`
+- Two templates: `simple-list` (titles + dates) and `list-with-excerpts`
+- Posts sorted by `publishedAt` descending
+- HTML escaping for XSS prevention
+- `formatArchiveDate()` with UTC timezone handling
+- Created archive CSS files:
+  - `archive-base.css` - Base styles and variables
+  - `archive-minimal.css` - Minimal theme
+  - `archive-modern.css` - Modern theme
+- **27 new tests**
+
+#### Phase D: Site Bundler
+- Created `src/exporter/site-bundler.js`
+- Generates complete static site ZIP:
+  - `index.html` - Archive page at root
+  - `{slug}/index.html` - Each post in own directory
+  - `images/` - Consolidated images from all posts
+  - `css/archive.css` - Combined archive base + theme CSS
+  - `css/post-base.css` - Post base styles
+  - `css/post-{theme}.css` - Only themes that are used
+- Updated `html-generator.js` to support `imagePathPrefix` option for relative paths
+- **18 new tests**
+
+#### Key Architecture Decisions
+1. **Platform-agnostic sites**: Site concept is independent of deployment platform
+2. **Shared images directory**: All post images consolidated at site root
+3. **Per-post themes**: Each post can have its own theme, CSS only included if used
+4. **Relative paths**: Posts reference `../images/` and `../css/` for portability
+
+#### Files Created
+- `src/core/site-storage.test.js`
+- `src/exporter/excerpt-generator.js`
+- `src/exporter/excerpt-generator.test.js`
+- `src/exporter/archive-generator.js`
+- `src/exporter/archive-generator.test.js`
+- `src/exporter/site-bundler.js`
+- `src/exporter/site-bundler.test.js`
+- `src/themes/archive-base.css`
+- `src/themes/archive-minimal.css`
+- `src/themes/archive-modern.css`
+
+#### Files Modified
+- `src/core/storage.js` - Added sites table and site functions
+- `src/exporter/html-generator.js` - Added imagePathPrefix option
+- `tests/setup.js` - Added archive CSS mocks
+
+---
 
 ### 2026-01-01: Initial Project Setup
 
@@ -1615,6 +1703,81 @@ document.head.appendChild(style);
 4. ❌ GitHub Pages integration
 5. ❌ Index page generation
 6. ❌ RSS feed generation
+
+---
+
+### 2026-01-17: Multi-Post Blog Architecture Planning
+
+#### Strategic Planning Session
+
+**Goal:** Design the multi-post blog architecture to transform Write Local from single-post publishing to a proper blog platform.
+
+#### Key Decisions Made
+
+**1. Platform Analysis**
+Analyzed Netlify, Vercel, and GitHub Pages for multi-post blog support:
+- All three platforms support identical static file structures
+- No platform-specific limitations for multi-post blogs
+- Differences are in deployment method, not what can be deployed
+- Full redeploy strategy works well on all platforms
+
+**2. Site Structure Decided**
+```
+my-blog/
+├── index.html              # Archive page
+├── my-first-post/
+│   └── index.html          # Post with its own theme
+├── another-post/
+│   └── index.html          # Different post, different theme possible
+├── images/                 # Shared images
+└── css/                    # All theme files
+```
+
+**3. Archive Page Design**
+- Two templates: `simple-list` and `list-with-excerpts`
+- **Simple list:** Title + published date (linked to post)
+- **List with excerpts:** Title + date + first 50 words + "..."
+- Archive has its own theming system (independent from post themes)
+- Configurable archive title (displayed as `<h1>`)
+
+**4. Data Model Additions**
+- **New `sites` table:** name, archiveTitle, archiveTemplate, archiveTheme, platform, platformSiteId, platformUrl
+- **Modified `posts` table:** adds `siteId` field to link posts to sites
+- Single site per user for MVP
+
+**5. Per-Post Theming**
+- Each post can have its own theme (stored in `post.theme`)
+- Theme selector dropdown in post editor
+- Live preview when switching themes
+
+#### Implementation Plan Created
+
+Created comprehensive [MULTI_POST_PLAN.md](./MULTI_POST_PLAN.md) with 8 sub-phases:
+- Phase A: Data Model & Storage
+- Phase B: Excerpt Generator
+- Phase C: Archive Page Generator
+- Phase D: Site Bundler
+- Phase E: Site Settings UI
+- Phase F: Post Theme Selector
+- Phase G: Updated Publish Flow
+- Phase H: Additional Platforms
+
+#### Files Created/Modified
+
+**Created:**
+- `MULTI_POST_PLAN.md` - Comprehensive implementation plan
+
+**Modified:**
+- `PLAN.md` - Updated Phase 5, Future Enhancements, references to new plan
+- `PROGRESS.md` - Updated current status and next steps
+
+#### Next Steps
+
+Begin implementation with **Phase A: Data Model & Storage**:
+1. Write tests for site CRUD operations
+2. Add `sites` table to Dexie schema
+3. Write tests for `siteId` field on posts
+4. Implement post-site queries
 
 ---
 

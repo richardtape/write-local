@@ -1386,9 +1386,27 @@ class YouTubeEmbed {
 - ✅ CORS workaround for Netlify API
 
 **Remaining Work:**
+- ⏳ **Multi-post blog architecture** (see [MULTI_POST_PLAN.md](./MULTI_POST_PLAN.md) for detailed plan)
 - ⏳ Vercel integration
 - ⏳ GitHub Pages integration
-- ⏳ **Multi-post blog architecture** (see Future Enhancements below)
+
+6. **Multi-Post Blog Architecture (TDD)** ⏳ NEXT PRIORITY
+   > **See [MULTI_POST_PLAN.md](./MULTI_POST_PLAN.md) for comprehensive implementation plan**
+
+   **Overview:** Transform from single-post publishing to full blog architecture:
+   - Users have one site containing all published posts
+   - Each post has its own URL slug and can have its own theme
+   - Archive page lists all posts with configurable title, template, and theme
+
+   **Sub-phases:**
+   - Phase A: Data Model & Storage (sites table, siteId on posts)
+   - Phase B: Excerpt Generator (first 50 words + "...")
+   - Phase C: Archive Page Generator (simple-list, list-with-excerpts templates)
+   - Phase D: Site Bundler (multi-post ZIP generation)
+   - Phase E: Site Settings UI (name, archive title, template, theme)
+   - Phase F: Post Theme Selector (per-post theme in editor)
+   - Phase G: Updated Publish Flow (site selection, full site deploy)
+   - Phase H: Additional Platforms (Vercel, GitHub Pages)
 
 ### Phase 6: Polish & Performance with TDD (Week 6)
 **Goal: Production-ready**
@@ -1555,56 +1573,21 @@ class YouTubeEmbed {
 
 ### Future Enhancements (Post v1.0)
 
-#### 🎯 Priority: Multi-Post Blog Architecture
+#### ✅ PLANNED: Multi-Post Blog Architecture
 
-**Current Limitation:**
-Each publish creates a separate Netlify site with a single post. Users need a "blog" - one site with multiple posts.
+> **See [MULTI_POST_PLAN.md](./MULTI_POST_PLAN.md) for comprehensive implementation plan**
 
-**Architecture Needed:**
-```
-mysite.netlify.app/
-├── index.html           # Blog home with post listing
-├── my-first-post/
-│   └── index.html       # Individual post
-├── another-post/
-│   └── index.html
-├── css/
-│   └── theme.css        # Shared theme
-├── rss.xml             # RSS feed
-└── sitemap.xml         # For SEO
-```
+This is now the current priority for Phase 5. Key features:
+- Sites table in IndexedDB linking posts to a single blog
+- Archive page with configurable title, template (simple-list or list-with-excerpts), and theme
+- Per-post theming (each post can have its own theme)
+- Full site deployment (all posts + archive page in one deploy)
 
-**Implementation Considerations:**
-1. **Blog entity in IndexedDB** - Link posts to a "blog" configuration
-2. **Index page generator** - List all published posts with excerpts
-3. **Shared layout** - Navigation, footer across all pages
-4. **Incremental publishing** - Only update changed posts
-5. **URL structure** - `/{post-slug}/index.html` for clean URLs
+#### ✅ PLANNED: Per-Post Theme Selection
 
-#### 🎯 Priority: Per-Post Theme Selection
+Included in the multi-post blog architecture plan (Phase F). Each post will have a theme selector in the editor, stored in `post.theme`.
 
-**Current Limitation:**
-All posts use the global default theme. Users want different themes for different posts.
-
-**Architecture Needed:**
-```javascript
-// Current: Global settings only
-settings: { key: 'defaultTheme', value: 'minimal' }
-
-// Needed: Post-specific overrides
-posts: {
-  id: 'uuid',
-  title: 'string',
-  theme: 'modern',  // Post-specific theme (already in schema!)
-  // ...
-}
-```
-
-**Implementation:**
-1. **Theme selector in editor** - Dropdown to override default theme for current post
-2. **Distinguish null vs explicit** - `null` = use default, `'modern'` = use modern
-3. **Apply on load** - When loading post, apply its theme (or default)
-4. **Export with post theme** - Bundle the post's selected theme, not global default
+#### Post-MVP Enhancements
 
 **Content Management:**
 - Search across all posts
@@ -1767,13 +1750,16 @@ The local writing experience is complete. Users can write, edit, theme, and expo
 
 > **Remember:** The Write Local *app* stays local - that's the whole point! Phase 5 is about publishing the *content* users create to hosting platforms.
 
-**To Build:**
-1. Publish modal UI (platform selection, progress, status feedback)
-2. Platform integrations via APIs (Netlify, Vercel, GitHub Pages)
-3. OAuth authentication flows for each platform
-4. Use MSW to mock API responses in tests
+**Current Priority: Multi-Post Blog Architecture**
 
-**Post-Publishing MVP:**
+See [MULTI_POST_PLAN.md](./MULTI_POST_PLAN.md) for the comprehensive implementation plan covering:
+- Data model changes (sites table, siteId on posts)
+- Archive page generation with two templates
+- Per-post theming
+- Site settings UI
+- Updated publish flow
+
+**Post-MVP:**
 - Keyboard shortcuts and polish
 - Additional themes
 - Documentation
@@ -1782,4 +1768,4 @@ The local writing experience is complete. Users can write, edit, theme, and expo
 
 *This plan represents a comprehensive blueprint for building Write Local. It balances ambitious goals with pragmatic implementation, prioritizing the core writing experience while maintaining flexibility for future enhancements.*
 
-**Last Updated:** 2026-01-16 - Netlify publishing implemented with 261 tests passing. Users can connect to Netlify via OAuth, create new sites, or deploy to existing sites. Theme engine refactored to use bundled CSS. **Remaining Phase 5 work:** Vercel/GitHub Pages integration, multi-post blog architecture, per-post theme selection.
+**Last Updated:** 2026-01-17 - Multi-post blog architecture planned. See [MULTI_POST_PLAN.md](./MULTI_POST_PLAN.md) for detailed implementation plan covering sites table, archive pages (simple-list and list-with-excerpts templates), per-post theming, and updated publish flow. Netlify publishing functional with 261 tests passing.

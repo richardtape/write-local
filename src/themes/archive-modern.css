@@ -1,0 +1,30 @@
+/**
+ * Archive Modern Theme
+ * Warm, contemporary design with subtle color and balanced spacing
+ * Matches the Modern post theme
+ */
+
+:root {
+  /* Colors - Warm, inviting palette with reduced contrast */
+  --archive-bg: #fafaf8;
+  --archive-text: #2d2d2d;
+  --archive-text-light: #666666;
+  --archive-link: #3b82f6;
+  --archive-link-hover: #2563eb;
+
+  /* Typography - Slightly rounded for contemporary feel */
+  --archive-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+
+  /* Slightly larger typography */
+  --archive-title-size: clamp(2.15rem, 1.6rem + 2.75vw, 3.25rem);
+  --archive-post-title-size: clamp(1.3rem, 1.05rem + 1.1vw, 1.6rem);
+  --archive-date-size: clamp(0.9rem, 0.825rem + 0.3vw, 1.05rem);
+  --archive-excerpt-size: clamp(0.975rem, 0.9rem + 0.3vw, 1.075rem);
+
+  /* Line height - Balanced for modern readability */
+  --archive-line-height: 1.65;
+
+  /* Spacing - Balanced, comfortable */
+  --archive-item-gap: clamp(1.5rem, 1.1rem + 1.25vw, 2.25rem);
+  --archive-padding: clamp(1.25rem, 0.625rem + 2.25vw, 2.25rem);
+}

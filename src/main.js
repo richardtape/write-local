@@ -32,6 +32,7 @@ import { renderPostList } from './components/post-list.js';
 import { renderTrashView } from './components/trash-view.js';
 import { renderSettingsView } from './components/settings-view.js';
 import { renderPublishView } from './components/publish-view.js';
+import { renderPostThemeSelector, updatePostThemeSelector } from './components/post-theme-selector.js';
 import { createPost, getMostRecentPost, getPost, deletePost, setStatus } from './core/storage.js';
 import { loadTheme, getDefaultTheme } from './core/theme-engine.js';
 import { saveImage } from './core/image-storage.js';
@@ -239,6 +240,16 @@ const editor = new EditorJS({
     // Initialize router
     const router = new Router();
 
+    // Initialize post theme selector
+    const themeSelectorContainer = document.getElementById('post-theme-selector-container');
+    await renderPostThemeSelector(themeSelectorContainer, {
+      postId: null, // Initially no post loaded
+      onChange: (theme) => {
+        // Trigger auto-save when theme changes
+        autoSave.scheduleSave();
+      },
+    });
+
     // Add event listener to title input for auto-save
     titleInput.addEventListener('input', () => {
       autoSave.scheduleSave();
@@ -271,6 +282,14 @@ const editor = new EditorJS({
           await renderPosts('all');
         }
       }
+
+      if (status === 'loaded') {
+        // Update theme selector when post is loaded
+        await updatePostThemeSelector(themeSelectorContainer, {
+          postId: autoSave.postId,
+        });
+      }
+
       // Update export button state on any status change
       updateExportButton();
     });

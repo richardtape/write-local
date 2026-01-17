@@ -38,6 +38,38 @@ vi.mock('../src/themes/modern.css?raw', () => ({
 `,
 }));
 
+// Mock archive CSS imports
+vi.mock('../src/themes/archive-base.css?raw', () => ({
+  default: `
+:root {
+  --archive-bg: #ffffff;
+  --archive-text: #1a1a1a;
+}
+.archive-content {
+  background: var(--archive-bg);
+  color: var(--archive-text);
+}
+`,
+}));
+
+vi.mock('../src/themes/archive-minimal.css?raw', () => ({
+  default: `
+:root {
+  --archive-bg: #ffffff;
+  --archive-text: #1a1a1a;
+}
+`,
+}));
+
+vi.mock('../src/themes/archive-modern.css?raw', () => ({
+  default: `
+:root {
+  --archive-bg: #fafaf8;
+  --archive-text: #2d2d2d;
+}
+`,
+}));
+
 // MSW server lifecycle hooks
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'bypass' });
