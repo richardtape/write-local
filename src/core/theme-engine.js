@@ -1,52 +1,56 @@
 /**
  * Theme Engine for Write Local
  * Handles loading base CSS and theme-specific CSS files
+ *
+ * CSS is imported at build time and injected as <style> tags.
+ * This ensures themes work regardless of domain or server configuration.
  */
 
 import { db } from './storage.js';
+
+// Import CSS files as raw strings using Vite's ?raw suffix
+import baseCSS from '../themes/base.css?raw';
+import minimalCSS from '../themes/minimal.css?raw';
+import modernCSS from '../themes/modern.css?raw';
+
+// Theme CSS map
+const THEME_CSS = {
+  minimal: minimalCSS,
+  modern: modernCSS,
+};
 
 // Track currently active theme
 let activeTheme = null;
 
 /**
  * Load a theme (base.css + theme-specific CSS)
+ * Injects CSS as <style> tags for reliable loading
  * @param {string} themeName - Name of theme to load (e.g., 'minimal', 'modern')
  */
 export async function loadTheme(themeName) {
-  // Always load base.css first if not already loaded
-  let baseLink = document.querySelector('link[data-theme="base"]');
-  if (!baseLink) {
-    baseLink = document.createElement('link');
-    baseLink.rel = 'stylesheet';
-    baseLink.href = '/src/themes/base.css';
-    baseLink.setAttribute('data-theme', 'base');
-    document.head.appendChild(baseLink);
-
-    // Wait for base to load
-    await new Promise((resolve) => {
-      baseLink.onload = resolve;
-      baseLink.onerror = resolve; // Continue even if base fails
-    });
+  // Always inject base.css first if not already present
+  let baseStyle = document.querySelector('style[data-theme="base"]');
+  if (!baseStyle) {
+    baseStyle = document.createElement('style');
+    baseStyle.setAttribute('data-theme', 'base');
+    baseStyle.textContent = baseCSS;
+    document.head.appendChild(baseStyle);
   }
 
   // Remove any existing theme-specific stylesheet (but keep base)
-  const existingTheme = document.querySelector('link[data-theme]:not([data-theme="base"])');
+  const existingTheme = document.querySelector('style[data-theme]:not([data-theme="base"])');
   if (existingTheme) {
     existingTheme.remove();
   }
 
-  // Load the new theme CSS
-  const themeLink = document.createElement('link');
-  themeLink.rel = 'stylesheet';
-  themeLink.href = `/src/themes/${themeName}.css`;
-  themeLink.setAttribute('data-theme', themeName);
-  document.head.appendChild(themeLink);
+  // Get the theme CSS (fall back to minimal if unknown theme)
+  const themeCSS = THEME_CSS[themeName] || THEME_CSS.minimal;
 
-  // Wait for theme to load
-  await new Promise((resolve) => {
-    themeLink.onload = resolve;
-    themeLink.onerror = resolve; // Continue even if theme fails
-  });
+  // Inject the new theme CSS
+  const themeStyle = document.createElement('style');
+  themeStyle.setAttribute('data-theme', themeName);
+  themeStyle.textContent = themeCSS;
+  document.head.appendChild(themeStyle);
 
   // Update active theme
   activeTheme = themeName;
@@ -67,7 +71,7 @@ export function getActiveTheme() {
 export async function setDefaultTheme(themeName) {
   await db.settings.put({
     key: 'defaultTheme',
-    value: themeName
+    value: themeName,
   });
 }
 
@@ -81,9 +85,24 @@ export async function getDefaultTheme() {
 }
 
 /**
+ * Get list of available themes
+ * @returns {Array<{id: string, name: string}>} Available themes
+ */
+export function getAvailableThemes() {
+  return [
+    { id: 'minimal', name: 'Minimal' },
+    { id: 'modern', name: 'Modern' },
+  ];
+}
+
+/**
  * Reset theme engine state (for testing)
  * @private
  */
 export function _resetThemeEngine() {
   activeTheme = null;
+
+  // Remove injected styles
+  const themeStyles = document.querySelectorAll('style[data-theme]');
+  themeStyles.forEach((style) => style.remove());
 }

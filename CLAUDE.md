@@ -265,40 +265,53 @@ it('removes special characters', () => {
 
 ## Implementation Status
 
-**Current Phase**: Phase 1 - Core Infrastructure (Week 1)
+**Current Phase**: Phase 4 COMPLETE ✅ → Phase 5 (Content Publishing) 🚧 CURRENT
 
-**✅ Completed**:
-- Vite project initialized
-- All dependencies installed
-- Vitest configured for TDD (28 tests passing)
-- Directory structure created
-- Development server running on port 7034
-- **EditorJS integrated** - Slash commands, inline formatting (bold, italic, link)
-- **Storage layer complete** - Full CRUD with Dexie/IndexedDB
-- **Auto-save working** - Debounced 500ms with visual feedback
-- **Auto-load working** - Most recent post loads on page refresh
-- **Post status system** - draft, published, pending, trashed
-- **Delete system** - Soft delete (trash) and permanent delete
-- **Slug generation** - Auto-generated from post titles
+**✅ Phase 1 Complete** (Core Infrastructure):
+- Vite project initialized, development server on port 7034
+- Vitest configured for TDD
+- EditorJS integrated with slash commands, inline formatting
+- Storage layer complete (CRUD + status management)
+- Auto-save (debounced 500ms) and auto-load working
+- Post list UI with filtering (All, Drafts, Published)
+- Trash system (soft delete, restore, permanent delete)
+- Image upload with optimization (WebP, 1200px preview)
+- Routing system (History API, bookmarkable URLs)
 
-**🚧 Next Up**:
-- Post list view UI
-- "New Post" button
-- Switch between posts
-- Export to HTML/Markdown
+**✅ Phase 2 Complete** (Theme System):
+- CSS variables architecture with Minor Third scale
+- Responsive fluid typography using `clamp()`
+- Responsive spacing that scales with viewport
+- Theme engine with live switching
+- Two themes: Minimal (clean, high contrast) and Modern (warm, contemporary)
+- Settings page for default theme selection
+
+**✅ Phase 4 Complete** (Export System):
+- HTML generator (EditorJS blocks → HTML)
+- Markdown generator (EditorJS blocks → Markdown)
+- ZIP bundler (HTML + Markdown + images + CSS)
+- Export button in editor toolbar
+- 224 tests passing
+
+**🚧 Phase 5: Content Publishing** (CURRENT PRIORITY):
+> **Note:** The Write Local *app* stays local (that's the point!). Phase 5 is about publishing *user content* to hosting platforms.
+
+- Publish modal UI (platform selection, progress, status feedback)
+- Netlify publishing (via API)
+- Vercel publishing (via API)
+- GitHub Pages publishing (via API)
+- OAuth authentication flows
 
 **📋 See PROGRESS.md for**:
-- Detailed session history (2 sessions documented)
+- Detailed session history
 - All decisions and reasoning
-- Testing achievements (28 passing tests)
+- Testing achievements (224 passing tests)
 - Current capabilities and what's missing
-- Next steps
 
 **Refer to PLAN.md sections**:
 - **Section 7**: 6-week implementation roadmap with TDD approach
 - **Section 3.4**: Image handling and export system details
 - **Section 3.2**: Theme system architecture
-- **Section 5**: Custom EditorJS blocks specifications
 
 ## Key Design Principles
 

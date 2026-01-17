@@ -1202,42 +1202,44 @@ class YouTubeEmbed {
 - ✅ All tests passing
 - ✅ Test suite runs in ~20 seconds
 
-### Phase 2: Styling System with TDD (Week 2-3)
+### Phase 2: Styling System with TDD (Week 2-3) ✅ COMPLETED
 **Goal: Typography and theme system**
 
 **TDD Tasks:**
-1. **CSS Variables Architecture**
-   - Design base variables (minor third scale)
-   - Implement responsive fluid typography with clamp()
-   - Create base content styles
+1. **CSS Variables Architecture** ✅
+   - ✅ Design base variables (minor third scale)
+   - ✅ Implement responsive fluid typography with clamp()
+   - ✅ Create base content styles
 
-2. **Theme Engine (TDD)**
-   - 🔴 Write tests for theme loading
-   - 🟢 Implement theme CSS injection
-   - 🔴 Write tests for theme switching
-   - 🟢 Implement dynamic theme switching
-   - 🔴 Write tests for per-post themes
-   - 🟢 Implement theme persistence
-   - 🔵 Refactor for performance
+2. **Theme Engine (TDD)** ✅
+   - ✅ 🔴 Write tests for theme loading
+   - ✅ 🟢 Implement theme CSS injection
+   - ✅ 🔴 Write tests for theme switching
+   - ✅ 🟢 Implement dynamic theme switching
+   - ⏭️ Per-post themes (deferred to post-v1.0)
+   - ✅ 🟢 Implement theme persistence
+   - ✅ 🔵 Refactor for performance
 
-3. **Default Themes**
-   - Create default minimal theme
-   - Create serif alternative theme
-   - Test theme isolation (app UI vs content)
+3. **Default Themes** ✅
+   - ✅ Create Minimal theme (clean, high contrast, generous whitespace)
+   - ✅ Create Modern theme (warm, contemporary, balanced)
+   - ✅ Test theme isolation (app UI vs content)
+   - ⏭️ Serif theme (deferred to post-v1.0)
 
-4. **Theme Selector Component (TDD)**
-   - 🔴 Write tests for theme dropdown
-   - 🟢 Implement theme selector UI
-   - 🔴 Write tests for live preview
-   - 🟢 Implement preview on hover
-   - 🔵 Polish UX
+4. **Theme Selector Component (TDD)** ✅
+   - ✅ 🔴 Write tests for settings view
+   - ✅ 🟢 Implement theme selector UI
+   - ✅ 🟢 Implement live theme switching
+   - ⏭️ Preview thumbnails (deferred to post-v1.0)
 
 **Deliverable:**
 - ✅ Beautiful, responsive content with theme switching
-- ✅ 85%+ test coverage on theme engine
-- ✅ All tests passing
+- ✅ Fluid typography that scales smoothly across all devices
+- ✅ Two distinct themes (Minimal, Modern)
+- ✅ 85%+ test coverage on theme engine (16 tests)
+- ✅ All tests passing (124 total)
 
-### Phase 3: Custom Blocks with TDD (Week 3)
+### Phase 3: Custom Blocks with TDD (Week 3) ✅ COMPLETED (Core Features)
 **Goal: Enhanced editing capabilities**
 
 **TDD Tasks:**
@@ -1246,14 +1248,14 @@ class YouTubeEmbed {
    - ✅ Full implementation: storage, optimization, accessibility, validation
    - ✅ 29 tests passing (17 storage + 12 optimization)
 
-2. **YouTube Embed Block (TDD)**
+2. **YouTube Embed Block (TDD)** ⏭️ DEFERRED to post-MVP
    - 🔴 Write tests for URL parsing
    - 🟢 Implement video ID extraction
    - 🔴 Write tests for embed rendering
    - 🟢 Create custom EditorJS block
    - 🔵 Add validation
 
-3. **Spacer Block (TDD)**
+3. **Spacer Block (TDD)** ⏭️ DEFERRED to post-MVP
    - 🔴 Write tests for spacer sizes
    - 🟢 Implement spacer block
    - 🔴 Write tests for custom size
@@ -1262,34 +1264,37 @@ class YouTubeEmbed {
 
 4. **Integration Testing**
    - ✅ Image workflow tested (upload → store → display → optimize)
-   - Custom blocks tested in editor
+   - ⏭️ Custom blocks deferred to post-MVP
 
 **Deliverable:**
 - ✅ Full-featured block editor with image support
-- ✅ 85%+ test coverage on custom blocks
+- ✅ 85%+ test coverage on image handling
 - ✅ Image handling fully tested and implemented
+- ⏭️ YouTube/Spacer blocks deferred for faster MVP delivery
 
-### Phase 4: Export System with TDD (Week 4)
+### Phase 4: Export System with TDD (Week 4) ✅ COMPLETED
 **Goal: Static HTML & Markdown generation**
 
 **TDD Tasks:**
-1. **HTML Generator (TDD)**
-   - 🔴 Write tests for paragraph rendering
-   - 🟢 Implement paragraph → HTML
-   - 🔴 Write tests for headings
-   - 🟢 Implement heading → HTML
-   - 🔴 Write tests for all block types
-   - 🟢 Implement complete renderer
-   - 🔴 Write tests for image references
-   - 🟢 Implement image path handling
-   - 🔵 Refactor for maintainability
+1. **HTML Generator (TDD)** ✅
+   - ✅ 🔴 Write tests for paragraph rendering
+   - ✅ 🟢 Implement paragraph → HTML
+   - ✅ 🔴 Write tests for headings
+   - ✅ 🟢 Implement heading → HTML
+   - ✅ 🔴 Write tests for all block types (list, quote, code, image)
+   - ✅ 🟢 Implement complete renderer
+   - ✅ 🔴 Write tests for image references
+   - ✅ 🟢 Implement image path handling (WebP conversion)
+   - ✅ 🔵 Refactor for maintainability
+   - **Files:** src/exporter/html-generator.js (55 tests)
 
-2. **Markdown Generator (TDD)**
-   - 🔴 Write tests for Markdown conversion
-   - 🟢 Implement EditorJS → Markdown
-   - 🔴 Write tests for all block types
-   - 🟢 Complete Markdown renderer
-   - 🔵 Handle edge cases
+2. **Markdown Generator (TDD)** ✅
+   - ✅ 🔴 Write tests for Markdown conversion
+   - ✅ 🟢 Implement EditorJS → Markdown with inline HTML conversion
+   - ✅ 🔴 Write tests for all block types
+   - ✅ 🟢 Complete Markdown renderer (bold, italic, links, code)
+   - ✅ 🔵 Handle edge cases (nested formatting, empty blocks)
+   - **Files:** src/exporter/markdown-generator.js (44 tests)
 
 3. **Image Optimizer (TDD)** ✅ COMPLETED IN PHASE 1
    - ✅ Canvas-based resize implemented (src/utils/image-optimizer.js)
@@ -1297,75 +1302,93 @@ class YouTubeEmbed {
    - ✅ Aspect ratio preservation with calculateDimensions()
    - ✅ 12 tests passing (validation + dimension calculations)
    - ✅ Manual Canvas testing via test-optimization.html
-   - **Note:** Ready for export integration
+   - ✅ Integrated into export bundler
 
-4. **ZIP Bundler (TDD)**
-   - 🔴 Write integration tests for ZIP export
-   - 🟢 Implement JSZip bundling
-   - 🔴 Write tests for file structure
-   - 🟢 Generate correct directory structure
-   - 🔴 Write tests for optimized images in ZIP
-   - 🟢 Include optimized images
-   - 🔵 Add progress indicators
+4. **ZIP Bundler (TDD)** ✅
+   - ✅ 🔴 Write integration tests for ZIP export
+   - ✅ 🟢 Implement JSZip bundling
+   - ✅ 🔴 Write tests for file structure
+   - ✅ 🟢 Generate correct directory structure (index.html, index.md, images/, css/)
+   - ✅ 🔴 Write tests for optimized images in ZIP
+   - ✅ 🟢 Include optimized images (WebP conversion)
+   - ✅ 🔵 Handle EditorJS content structure (blocks array)
+   - **Files:** src/exporter/bundler.js (15 tests)
 
-5. **Template System (TDD)**
-   - 🔴 Write tests for HTML template
-   - 🟢 Implement template generation
-   - 🔴 Write tests for CSS inlining
-   - 🟢 Inline theme CSS
-   - 🔵 Minify output (optional)
+5. **Template System (TDD)** ✅
+   - ✅ 🔴 Write tests for HTML template
+   - ✅ 🟢 Implement template generation with title in body
+   - ✅ 🔴 Write tests for CSS bundling
+   - ✅ 🟢 Combine base + theme CSS using Vite ?raw imports
+   - **Files:** Integrated into bundler.js
 
-6. **Export Integration**
-   - 🔴 Write end-to-end export tests
-   - 🟢 Test complete workflow: Post → ZIP (HTML + Markdown + Images + CSS)
-   - Verify ZIP structure
-   - Verify file contents
+6. **Export Integration** ✅
+   - ✅ 🔴 Write end-to-end export tests
+   - ✅ 🟢 Complete workflow: Post → ZIP (HTML + Markdown + Images + CSS)
+   - ✅ Export button in editor toolbar
+   - ✅ Download utility (src/utils/download.js)
+   - ✅ Loading state and error handling
 
 **Deliverable:**
 - ✅ Can export posts to static HTML and Markdown with optimized images
-- ✅ 90%+ test coverage on export system
+- ✅ 90%+ test coverage on export system (114 tests for export module)
 - ✅ Integration tests verify complete export workflow
-- ✅ ZIP files validated
+- ✅ ZIP files validated with correct structure
+- ✅ One-click export button in editor UI
+- ✅ 224 total tests passing
 
-### Phase 5: Publishing with TDD (Week 5)
-**Goal: Deploy to hosting platforms**
+### Phase 5: Content Publishing (Week 5) 🚧 IN PROGRESS
+**Goal: Enable users to publish their blog content to hosting platforms with one click**
+
+> **Note:** The Write Local *app* stays local (that's the point!). This phase is about publishing *user content* (the blog posts they write) to hosting platforms so their content is accessible online.
 
 **TDD Tasks:**
-1. **Netlify Integration (TDD)**
-   - 🔴 Write tests for Netlify API auth
-   - 🟢 Implement OAuth flow (using MSW to mock)
-   - 🔴 Write tests for site deployment
-   - 🟢 Implement deploy endpoint
-   - 🔵 Add error handling
+1. **Netlify Integration (TDD)** ✅ COMPLETE
+   - ✅ 🔴 Write tests for Netlify API auth
+   - ✅ 🟢 Implement OAuth flow (using MSW to mock)
+   - ✅ 🔴 Write tests for site deployment
+   - ✅ 🟢 Implement deploy endpoint
+   - ✅ 🔵 Add error handling
+   - ✅ **CORS workaround:** Netlify API returns duplicate headers; implemented detection and recovery
+   - **Files:** `src/publisher/auth-storage.js`, `netlify-oauth.js`, `netlify-api.js`, `deploy-service.js`
+   - **Tests:** 24 tests passing (5 + 6 + 8 + 5)
 
-2. **Vercel Integration (TDD)**
+2. **Publish View Component (TDD)** ✅ COMPLETE
+   - ✅ 🔴 Write tests for publish UI
+   - ✅ 🟢 Implement publish view (not modal - full view in sidebar)
+   - ✅ 🔴 Write tests for platform selection
+   - ✅ 🟢 Add site selector dropdown
+   - ✅ 🔴 Write tests for deployment status
+   - ✅ 🟢 Show progress/success/error states
+   - ✅ 🔵 Post marked as "published" after success
+   - **Files:** `src/components/publish-view.js`
+   - **Tests:** 13 tests passing
+
+3. **Vercel Integration (TDD)** ⏳ TODO
    - 🔴 Write tests for Vercel API
    - 🟢 Implement deployment
    - 🔵 Refactor shared code
 
-3. **GitHub Pages Integration (TDD)**
+4. **GitHub Pages Integration (TDD)** ⏳ TODO
    - 🔴 Write tests for GitHub API
    - 🟢 Implement push to gh-pages
    - 🔵 Add branch protection checks
 
-4. **Publish Modal Component (TDD)**
-   - 🔴 Write tests for publish UI
-   - 🟢 Implement publish modal
-   - 🔴 Write tests for platform selection
-   - 🟢 Add platform dropdown
-   - 🔴 Write tests for deployment status
-   - 🟢 Show progress/success/error states
-   - 🔵 Polish UX
+5. **Integration Testing** ✅ COMPLETE
+   - ✅ Use MSW to mock API responses
+   - ✅ Test complete publish workflow
+   - ✅ Verify error scenarios
 
-5. **Integration Testing**
-   - Use MSW to mock API responses
-   - Test complete publish workflow
-   - Verify error scenarios
-
-**Deliverable:**
-- ✅ One-click publish to free hosts
-- ✅ 80%+ test coverage (mocked API calls)
+**Current Deliverable (Netlify only):**
+- ✅ One-click publish to Netlify
+- ✅ Publish view with site selection and progress feedback
+- ✅ 37 new tests (261 total)
 - ✅ Error handling tested
+- ✅ CORS workaround for Netlify API
+
+**Remaining Work:**
+- ⏳ Vercel integration
+- ⏳ GitHub Pages integration
+- ⏳ **Multi-post blog architecture** (see Future Enhancements below)
 
 ### Phase 6: Polish & Performance with TDD (Week 6)
 **Goal: Production-ready**
@@ -1467,8 +1490,8 @@ class YouTubeEmbed {
 - ✅ Quotes
 - ✅ Code
 - ✅ Images (with alt text, file validation, optimization)
-- ⏳ YouTube embeds (custom) - planned Phase 3
-- ⏳ Spacer (custom) - planned Phase 3
+- ⏭️ YouTube embeds (custom) - deferred to post-MVP
+- ⏭️ Spacer (custom) - deferred to post-MVP
 
 ### Themes
 - ✅ Default minimal theme
@@ -1477,13 +1500,14 @@ class YouTubeEmbed {
 - ✅ Live theme preview
 
 ### Publishing & Export
-- ✅ Download as ZIP (HTML + Markdown + optimized images)
-- ✅ Automatic image optimization (WebP, resize)
-- ✅ Markdown export alongside HTML
-- ✅ Optional single-file HTML (with warnings)
-- ✅ Deploy to Netlify
-- ✅ Deploy to Vercel
-- ✅ Deploy to GitHub Pages
+- ✅ Download as ZIP (HTML + Markdown + optimized images) - **IMPLEMENTED**
+- ✅ Automatic image optimization (WebP, resize) - **IMPLEMENTED**
+- ✅ Markdown export alongside HTML - **IMPLEMENTED**
+- ✅ One-click Export button in editor - **IMPLEMENTED**
+- ⏳ Optional single-file HTML (with warnings) - deferred
+- ⏳ Deploy to Netlify - Phase 5
+- ⏳ Deploy to Vercel - Phase 5
+- ⏳ Deploy to GitHub Pages - Phase 5
 
 ---
 
@@ -1530,6 +1554,57 @@ class YouTubeEmbed {
    - Architecture will support multiple sites in future
 
 ### Future Enhancements (Post v1.0)
+
+#### 🎯 Priority: Multi-Post Blog Architecture
+
+**Current Limitation:**
+Each publish creates a separate Netlify site with a single post. Users need a "blog" - one site with multiple posts.
+
+**Architecture Needed:**
+```
+mysite.netlify.app/
+├── index.html           # Blog home with post listing
+├── my-first-post/
+│   └── index.html       # Individual post
+├── another-post/
+│   └── index.html
+├── css/
+│   └── theme.css        # Shared theme
+├── rss.xml             # RSS feed
+└── sitemap.xml         # For SEO
+```
+
+**Implementation Considerations:**
+1. **Blog entity in IndexedDB** - Link posts to a "blog" configuration
+2. **Index page generator** - List all published posts with excerpts
+3. **Shared layout** - Navigation, footer across all pages
+4. **Incremental publishing** - Only update changed posts
+5. **URL structure** - `/{post-slug}/index.html` for clean URLs
+
+#### 🎯 Priority: Per-Post Theme Selection
+
+**Current Limitation:**
+All posts use the global default theme. Users want different themes for different posts.
+
+**Architecture Needed:**
+```javascript
+// Current: Global settings only
+settings: { key: 'defaultTheme', value: 'minimal' }
+
+// Needed: Post-specific overrides
+posts: {
+  id: 'uuid',
+  title: 'string',
+  theme: 'modern',  // Post-specific theme (already in schema!)
+  // ...
+}
+```
+
+**Implementation:**
+1. **Theme selector in editor** - Dropdown to override default theme for current post
+2. **Distinguish null vs explicit** - `null` = use default, `'modern'` = use modern
+3. **Apply on load** - When loading post, apply its theme (or default)
+4. **Export with post theme** - Bundle the post's selected theme, not global default
 
 **Content Management:**
 - Search across all posts
@@ -1678,23 +1753,33 @@ This plan was informed by the following research:
 
 > **📋 For Current Implementation Status**: See **[PROGRESS.md](./PROGRESS.md)** for what's been completed and what's next.
 
-### Ready to Begin Implementation! 🚀
+### 🚀 Ready for Content Publishing!
 
-All key decisions have been finalized:
-- ✅ Image handling strategy (File API + Blobs + WebP optimization)
-- ✅ Export format (ZIP with HTML + Markdown)
-- ✅ Multi-site support roadmap (v1.0: single site, future: multiple)
-- ✅ Technology stack validated
+**Phases 1-4 Complete** (224 tests passing):
+- ✅ Core Infrastructure (storage, editor, routing)
+- ✅ Theme System (responsive typography, 2 themes)
+- ✅ Image Handling (storage, optimization, accessibility)
+- ✅ Export System (HTML, Markdown, ZIP bundler)
 
-**To Start Phase 1:**
-1. Initialize project with Vite
-2. Set up IndexedDB schema with Dexie
-3. Implement basic routing
-4. Integrate EditorJS
-5. Build posts list and editor views
+**Phase 5: Publish User Content**
+
+The local writing experience is complete. Users can write, edit, theme, and export their blog posts. Now we need to let them publish their content online with one click.
+
+> **Remember:** The Write Local *app* stays local - that's the whole point! Phase 5 is about publishing the *content* users create to hosting platforms.
+
+**To Build:**
+1. Publish modal UI (platform selection, progress, status feedback)
+2. Platform integrations via APIs (Netlify, Vercel, GitHub Pages)
+3. OAuth authentication flows for each platform
+4. Use MSW to mock API responses in tests
+
+**Post-Publishing MVP:**
+- Keyboard shortcuts and polish
+- Additional themes
+- Documentation
 
 ---
 
 *This plan represents a comprehensive blueprint for building Write Local. It balances ambitious goals with pragmatic implementation, prioritizing the core writing experience while maintaining flexibility for future enhancements.*
 
-**Last Updated:** 2026-01-04 - Image upload and optimization features completed and documented
+**Last Updated:** 2026-01-16 - Netlify publishing implemented with 261 tests passing. Users can connect to Netlify via OAuth, create new sites, or deploy to existing sites. Theme engine refactored to use bundled CSS. **Remaining Phase 5 work:** Vercel/GitHub Pages integration, multi-post blog architecture, per-post theme selection.

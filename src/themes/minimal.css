@@ -1,11 +1,32 @@
 /**
  * Minimal Theme
- * Clean, white background with subtle styling
+ * Clean, crisp design with high contrast and ample whitespace
+ * Philosophy: Remove everything unnecessary, let content breathe
  */
 
 :root {
-  /* Just override the background for now (scaffolding) */
-  --color-background: #cccccc;
+  /* Colors - High contrast for maximum readability */
+  --color-background: #ffffff;
   --color-text: #1a1a1a;
-  --color-accent: #0066cc;
+  --color-text-light: #555555;
+  --color-accent: #0066ff;
+  --color-border: #e5e5e5;
+
+  /* Typography - System fonts for familiarity and performance */
+  --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-mono: 'SF Mono', Monaco, 'Courier New', monospace;
+
+  /* Line Heights - Extra loose for comfortable reading */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.6;
+  --line-height-loose: 1.8;
+
+  /* Spacing - Generous whitespace for clean, uncluttered feel */
+  --space-xs: clamp(0.5rem, 0.4rem + 0.3vw, 0.625rem);
+  --space-sm: clamp(0.75rem, 0.6rem + 0.75vw, 1rem);
+  --space-md: clamp(1rem, 0.85rem + 0.75vw, 1.25rem);
+  --space-lg: clamp(1.5rem, 1.2rem + 1.5vw, 2rem);
+  --space-xl: clamp(2rem, 1.75rem + 1.25vw, 2.5rem);
+  --space-2xl: clamp(3rem, 2.5rem + 2.5vw, 4rem);
 }

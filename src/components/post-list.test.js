@@ -123,8 +123,8 @@ describe('PostList Component', () => {
     const newPostButton = container.querySelector('[data-action="new-post"]');
     newPostButton.click();
 
-    // Wait for async operations to complete
-    await new Promise(resolve => setTimeout(resolve, 0));
+    // Wait for async operations (createPost) to complete
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     expect(mockRouter.navigate).toHaveBeenCalledWith('/posts');
   });

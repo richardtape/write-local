@@ -1,5 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { loadTheme, getActiveTheme, setDefaultTheme, getDefaultTheme, _resetThemeEngine } from './theme-engine.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  loadTheme,
+  getActiveTheme,
+  setDefaultTheme,
+  getDefaultTheme,
+  getAvailableThemes,
+  _resetThemeEngine,
+} from './theme-engine.js';
 import { db } from './storage.js';
 
 describe('Theme Engine', () => {
@@ -8,40 +15,38 @@ describe('Theme Engine', () => {
     await db.delete();
     await db.open();
 
-    // Clear any existing theme stylesheets
-    document.querySelectorAll('link[data-theme]').forEach(el => el.remove());
-    // Reset theme engine state
+    // Reset theme engine state (also removes injected styles)
     _resetThemeEngine();
   });
 
   afterEach(() => {
-    // Cleanup
-    document.querySelectorAll('link[data-theme]').forEach(el => el.remove());
+    // Cleanup any remaining theme styles
+    document.querySelectorAll('style[data-theme]').forEach((el) => el.remove());
   });
 
   describe('loadTheme', () => {
-    it('should load base.css first', async () => {
+    it('should inject base.css first', async () => {
       await loadTheme('minimal');
 
-      const baseLink = document.querySelector('link[data-theme="base"]');
-      expect(baseLink).toBeTruthy();
-      expect(baseLink.href).toContain('base.css');
+      const baseStyle = document.querySelector('style[data-theme="base"]');
+      expect(baseStyle).toBeTruthy();
+      expect(baseStyle.textContent).toContain('--color-background');
     });
 
-    it('should load theme CSS after base', async () => {
+    it('should inject theme CSS after base', async () => {
       await loadTheme('minimal');
 
-      const themeLink = document.querySelector('link[data-theme="minimal"]');
-      expect(themeLink).toBeTruthy();
-      expect(themeLink.href).toContain('minimal.css');
+      const themeStyle = document.querySelector('style[data-theme="minimal"]');
+      expect(themeStyle).toBeTruthy();
+      expect(themeStyle.textContent).toContain(':root');
     });
 
     it('should load different themes', async () => {
       await loadTheme('modern');
 
-      const themeLink = document.querySelector('link[data-theme="modern"]');
-      expect(themeLink).toBeTruthy();
-      expect(themeLink.href).toContain('modern.css');
+      const themeStyle = document.querySelector('style[data-theme="modern"]');
+      expect(themeStyle).toBeTruthy();
+      expect(themeStyle.textContent).toContain(':root');
     });
 
     it('should replace existing theme when loading new one', async () => {
@@ -49,25 +54,33 @@ describe('Theme Engine', () => {
       await loadTheme('modern');
 
       // Should only have base + modern, not minimal
-      const minimalLink = document.querySelector('link[data-theme="minimal"]');
-      const modernLink = document.querySelector('link[data-theme="modern"]');
+      const minimalStyle = document.querySelector('style[data-theme="minimal"]');
+      const modernStyle = document.querySelector('style[data-theme="modern"]');
 
-      expect(minimalLink).toBeNull();
-      expect(modernLink).toBeTruthy();
+      expect(minimalStyle).toBeNull();
+      expect(modernStyle).toBeTruthy();
     });
 
     it('should keep base.css when switching themes', async () => {
       await loadTheme('minimal');
       await loadTheme('modern');
 
-      const baseLink = document.querySelector('link[data-theme="base"]');
-      expect(baseLink).toBeTruthy();
+      const baseStyle = document.querySelector('style[data-theme="base"]');
+      expect(baseStyle).toBeTruthy();
     });
 
     it('should set active theme', async () => {
       await loadTheme('minimal');
 
       expect(getActiveTheme()).toBe('minimal');
+    });
+
+    it('should fall back to minimal for unknown themes', async () => {
+      await loadTheme('nonexistent');
+
+      // Should still inject a theme style (minimal as fallback)
+      const themeStyles = document.querySelectorAll('style[data-theme]:not([data-theme="base"])');
+      expect(themeStyles.length).toBe(1);
     });
   });
 
@@ -80,6 +93,15 @@ describe('Theme Engine', () => {
       await loadTheme('modern');
 
       expect(getActiveTheme()).toBe('modern');
+    });
+  });
+
+  describe('getAvailableThemes', () => {
+    it('should return list of available themes', () => {
+      const themes = getAvailableThemes();
+
+      expect(themes).toContainEqual({ id: 'minimal', name: 'Minimal' });
+      expect(themes).toContainEqual({ id: 'modern', name: 'Modern' });
     });
   });
 
@@ -109,6 +131,25 @@ describe('Theme Engine', () => {
 
       const defaultTheme = await getDefaultTheme();
       expect(defaultTheme).toBe('modern');
+    });
+  });
+
+  describe('_resetThemeEngine', () => {
+    it('should remove all injected theme styles', async () => {
+      await loadTheme('minimal');
+
+      _resetThemeEngine();
+
+      const themeStyles = document.querySelectorAll('style[data-theme]');
+      expect(themeStyles.length).toBe(0);
+    });
+
+    it('should reset active theme to null', async () => {
+      await loadTheme('minimal');
+
+      _resetThemeEngine();
+
+      expect(getActiveTheme()).toBeNull();
     });
   });
 });

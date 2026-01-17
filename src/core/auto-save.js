@@ -164,6 +164,9 @@ export class AutoSave {
 
     // Render the post content in the editor
     await this.editor.render(post.content);
+
+    // Emit loaded status
+    this.emit('statusChange', 'loaded');
   }
 
   /**

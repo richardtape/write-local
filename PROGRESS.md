@@ -6,9 +6,26 @@ This document tracks implementation progress, decisions, and reasoning to provid
 
 ## Current Status
 
-**Phase:** Phase 2 - Theme System (Week 2-3) 🚧 IN PROGRESS
-**Last Updated:** 2026-01-06
+**Phase:** Phase 5 (Content Publishing) 🚧 IN PROGRESS
+**Last Updated:** 2026-01-16
 **Development Approach:** Test-Driven Development (TDD)
+
+### 🚧 Phase 5 Progress (Netlify Publishing)
+- [x] MSW test infrastructure for mocking Netlify API
+- [x] Auth storage (token storage in IndexedDB)
+- [x] Netlify OAuth flow (popup-based authentication)
+- [x] Netlify API client (sites, deploys, status polling)
+- [x] Deploy service (orchestrates publish workflow)
+- [x] Publish view component (UI for connecting and publishing)
+- [x] CORS workaround for Netlify API (duplicate headers issue)
+- [x] Theme engine refactor (bundled CSS via `?raw` imports)
+- [x] Alt text fix (from block tunes to published HTML)
+- [x] Post status update after publishing
+
+### 📋 Remaining for Phase 5
+- [ ] Vercel integration
+- [ ] GitHub Pages integration
+- [ ] Multi-post blog architecture (one site with multiple posts)
 
 ### ✅ Completed
 - [x] Development environment setup
@@ -42,35 +59,38 @@ This document tracks implementation progress, decisions, and reasoning to provid
 - [x] **Theme System Scaffolding** (CSS architecture + engine)
 - [x] **Settings Page** (theme selection UI)
 - [x] **Live Theme Switching** (instant preview without refresh)
+- [x] **Responsive Typography** (fluid `clamp()` scaling for all font sizes)
+- [x] **Responsive Spacing** (fluid spacing that scales with viewport)
+- [x] **Full Theme CSS** (Minimal and Modern themes fully built out)
+- [x] **HTML Generator** (EditorJS blocks → HTML with all block types)
+- [x] **Markdown Generator** (EditorJS blocks → Markdown with inline formatting)
+- [x] **ZIP Bundler** (HTML + Markdown + optimized images + theme CSS)
+- [x] **Export Button** (one-click export to ZIP)
+- [x] **Download Utility** (triggers browser file download)
 
-### 🚧 In Progress
-- **Theme System Enhancement**
-  - Need to build out full theme CSS (beyond background color)
-  - Per-post theme override (not just default)
-  - Additional themes beyond minimal/modern
+### 🚧 Next Priority: CONTENT PUBLISHING (Phase 5)
+The local writing experience is complete. Now users need to publish their blog content online!
+
+> **Note:** The Write Local *app* stays local (that's the point!). Phase 5 is about publishing *user content* to hosting platforms like Netlify, Vercel, or GitHub Pages.
 
 ### 📋 Next Steps
-1. **Complete Theme System** (Phase 2 - Current)
-   - ✅ ~~CSS variables architecture~~ (DONE)
-   - ✅ ~~Theme engine with loading~~ (DONE)
-   - ✅ ~~Default theme selection in settings~~ (DONE)
-   - ✅ ~~Live theme switching~~ (DONE)
-   - ⏳ Build out full theme CSS (typography, spacing, colors)
-   - ⏳ Per-post theme override selector in editor
-   - ⏳ Load post-specific theme when switching posts
-   - ⏳ Additional themes (serif, dark, etc.)
-2. **Export System** (Phase 4)
-   - Export to HTML
-   - Export to Markdown
-   - ZIP bundling with optimized images
-   - Theme-aware image optimization
-3. **Additional Features**
+1. **Content Publishing** (Phase 5 - **CURRENT PRIORITY FOR MVP**)
+   - ⏳ Publish modal UI (platform selection, progress, success/error states)
+   - ⏳ Netlify publishing (one-click publish user content via API)
+   - ⏳ Vercel publishing (alternative platform)
+   - ⏳ GitHub Pages publishing (free option)
+   - ⏳ OAuth authentication flows for each platform
+2. **Deferred Features** (Post-v1.0)
+   - Per-post theme override selector
+   - Additional themes (serif, dark)
    - Search/filter posts by title
    - Keyboard shortcuts
    - Distraction-free mode
+   - YouTube embed block
+   - Spacer block
 
 ### 📊 Test Status
-- **Total Tests:** 124 passing ✅
+- **Total Tests:** 261 passing ✅
   - Storage tests: 20
   - Auto-save tests: 8
   - Post-list tests: 19
@@ -78,10 +98,18 @@ This document tracks implementation progress, decisions, and reasoning to provid
   - Router tests: 23
   - Theme engine tests: 16
   - Settings view tests: 6
-  - Image-storage tests: 0 (skipped - tested manually)
   - Image-optimizer tests: 12
-  - Updated component tests: 8
-- **Test Coverage:** On track for 85%+ target (Phase 2)
+  - HTML generator tests: 23
+  - Markdown generator tests: 45
+  - Bundler tests: 12
+  - Download utility tests: 4
+  - Updated component tests: 24
+  - **NEW:** Auth storage tests: 5
+  - **NEW:** Netlify OAuth tests: 6
+  - **NEW:** Netlify API tests: 8
+  - **NEW:** Deploy service tests: 5
+  - **NEW:** Publish view tests: 13
+- **Test Coverage:** On track for 85%+ target
 
 ---
 
@@ -1199,35 +1227,394 @@ According to PLAN.md, the next phase focuses on:
 - Theme CSS: ~200 lines total (~5KB)
 - No external dependencies
 
-#### Next Session TODO
+---
 
-**To complete Phase 2 Theme System:**
+### 2026-01-15: Responsive Theme System Complete
 
-1. **Build Out Theme CSS** - Expand beyond background color
-   - Typography: font families, sizes, weights
-   - Colors: text, accent, borders, code blocks
-   - Spacing: margins, padding between blocks
-   - Make minimal vs modern visually distinct
-   - Test with real blog content
+#### Responsive Typography Implementation
 
-2. **Per-Post Theme Override**
-   - Add `theme` field to post schema (already exists!)
-   - Add theme dropdown to editor header
-   - Load post.theme instead of default when editing
-   - Save theme selection with post
-   - Fallback to default if post.theme is null
+**Decision: Implement fluid typography using CSS `clamp()`**
+- **Reasoning:**
+  - Smooth scaling from mobile to desktop (no jarring breakpoints)
+  - Better reading experience across all device sizes
+  - Follows modern CSS best practices
+  - Matches PLAN.md specification for fluid type scale
+- **Implementation:**
+  - Updated `base.css` with responsive font sizes
+  - All sizes scale smoothly: mobile (320px) → desktop (1200px+)
+  - Example: `--font-size-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem)` (16px → 18px)
 
-3. **Additional Themes**
-   - Create `serif.css` theme (elegant, Georgia font)
-   - Consider dark theme option
-   - Document theme variables for theme authors
+#### Responsive Spacing Implementation
 
-4. **Theme Selector Enhancement**
-   - Visual preview of themes
-   - Apply theme to preview area
-   - Better UX for theme selection
+**Decision: Make all spacing variables responsive**
+- **Reasoning:**
+  - Tighter spacing on mobile for efficient screen use
+  - More generous spacing on desktop for comfortable reading
+  - Consistent with fluid typography approach
+- **Implementation:**
+  - All `--space-*` variables now use `clamp()`
+  - Added `--content-padding` variable for responsive padding
+  - Updated `.post-content` to use responsive padding
 
-**Priority:** Per-post override is most important - lets users experiment with themes on specific posts without changing their default.
+#### Full Theme CSS Buildout
+
+**Decision: Complete Minimal and Modern themes with distinct personalities**
+
+**Minimal Theme:**
+- Pure white background (#ffffff)
+- High contrast text for maximum readability
+- Extra generous whitespace (looser spacing)
+- Looser line heights (1.6 normal, 1.8 loose)
+- Philosophy: "Remove everything unnecessary, let content breathe"
+
+**Modern Theme:**
+- Warm off-white background (#fafaf8)
+- Reduced contrast for softer feel
+- Slightly larger base font (17px vs 16px on mobile)
+- Balanced spacing (middle ground)
+- More generous padding
+- Philosophy: "Comfortable reading with a touch of personality"
+
+**Key Differences:**
+| Aspect | Minimal | Modern |
+|--------|---------|--------|
+| Background | Pure white (#fff) | Warm off-white (#fafaf8) |
+| Base font | 16px → 18px | 17px → 19px |
+| Line height | 1.6 (looser) | 1.65 (balanced) |
+| Spacing | More generous | Balanced |
+| Accent | Bright blue (#0066ff) | Modern blue (#3b82f6) |
+
+#### Files Modified
+
+- `src/themes/base.css` - Added responsive `clamp()` typography and spacing
+- `src/themes/minimal.css` - Full theme with distinct personality
+- `src/themes/modern.css` - Full theme with warm, contemporary feel
+
+#### Phase 2 Status: COMPLETE ✅
+
+**Theme System Deliverables:**
+- ✅ CSS variables architecture with responsive fluid typography
+- ✅ Theme engine with dynamic loading
+- ✅ Default theme selection in settings
+- ✅ Live theme switching (instant, no refresh)
+- ✅ Two distinct themes (Minimal, Modern)
+- ✅ WYSIWYG editing (editor shows themed content)
+
+**Deferred to Post-v1.0:**
+- Per-post theme override (nice-to-have, not essential for MVP)
+- Additional themes (serif, dark)
+- Theme preview thumbnails
+
+#### Next Priority: Export & Content Publishing
+
+With local editing fully functional, the next major milestone is getting content out:
+
+1. **Export System (Phase 4)** ✅ COMPLETE
+   - Generate HTML from EditorJS blocks
+   - Generate Markdown alongside HTML
+   - Bundle into ZIP with optimized images and CSS
+   - Download functionality
+
+2. **Content Publishing (Phase 5)** 🚧 CURRENT
+   - One-click publish user's blog content to Netlify/Vercel/GitHub Pages
+   - Publish modal UI with platform selection
+   - Publishing progress and status feedback
+
+This completes the core "write locally" experience. Content publishing completes the "publish anywhere" promise. (The app stays local - only the content goes online!)
+
+---
+
+### 2026-01-16: Export System Complete - Ready for Content Publishing
+
+#### Export System Implementation (TDD)
+
+**Phase 4 completed with all export features working:**
+
+1. **HTML Generator** (`src/exporter/html-generator.js`)
+   - Renders all EditorJS block types to HTML
+   - Paragraph, header (H1-H6), list, quote, code, image
+   - Handles inline HTML formatting (bold, italic, links)
+   - HTML escaping for code blocks
+   - Image paths converted to WebP in `./images/` directory
+   - 55 tests passing
+
+2. **Markdown Generator** (`src/exporter/markdown-generator.js`)
+   - Converts EditorJS blocks to Markdown
+   - `convertInlineHTMLToMarkdown()` handles `<b>`, `<i>`, `<a>`, `<code>`
+   - Proper handling of nested formatting (bold + italic = `***text***`)
+   - Quote blocks with captions
+   - Fenced code blocks
+   - Image references with WebP paths
+   - 45 tests passing
+
+3. **ZIP Bundler** (`src/exporter/bundler.js`)
+   - Creates complete export package with JSZip
+   - Structure: `index.html`, `index.md`, `images/`, `css/theme.css`
+   - Combines base.css + theme CSS using Vite `?raw` imports
+   - Optimizes images to WebP during export
+   - Handles EditorJS content structure (`post.content.blocks`)
+   - 15 tests passing
+
+4. **Export Button UI**
+   - One-click "Export ZIP" button in editor toolbar
+   - Loading state ("Exporting...") during export
+   - Error handling with visual feedback
+   - Triggers browser download of `{post-slug}.zip`
+   - Download utility in `src/utils/download.js`
+
+#### Bug Fixes During Integration
+
+**Several issues discovered and fixed during real-world testing:**
+
+1. **Editor flashing on save** - Route handler was reloading editor on every save
+   - Fix: Only refresh sidebar post list, not full route
+
+2. **Export button greyed out on load** - `updateExportButton()` not called after initial load
+   - Fix: Added `'loaded'` status emission in auto-save, called update after route handler
+
+3. **Empty content in exports** - `post.content` is `{blocks: [...]}`, not array
+   - Fix: Access `post.content?.blocks || []` in bundler
+
+4. **List items TypeError** - EditorJS stores items as objects `{content, items}` for nested lists
+   - Fix: Handle both string and object items in both generators
+
+5. **Title not in HTML body** - HTML template was missing title in article
+   - Fix: Added `<h1>${title}</h1>` inside article body
+
+#### Testing Achievements
+
+- **Total Tests:** 224 passing ✅
+- **Export module tests:** 114 tests
+  - HTML generator: 55 tests
+  - Markdown generator: 45 tests
+  - Bundler: 15 tests
+  - Download utility: 4 tests
+- **Test coverage:** On track for 85%+ target
+
+#### Files Created/Modified
+
+**Created:**
+- `src/exporter/html-generator.js` - EditorJS → HTML renderer
+- `src/exporter/html-generator.test.js` - 55 tests
+- `src/exporter/markdown-generator.js` - EditorJS → Markdown renderer
+- `src/exporter/markdown-generator.test.js` - 45 tests
+- `src/exporter/bundler.js` - ZIP packaging with JSZip
+- `src/exporter/bundler.test.js` - 15 tests
+- `src/utils/download.js` - Browser file download utility
+- `src/utils/download.test.js` - 4 tests
+
+**Modified:**
+- `src/main.js` - Export button integration, status handling fixes
+- `src/core/auto-save.js` - Added 'loaded' status emission
+- `index.html` - Added export button to toolbar
+
+#### Phase 4 Status: COMPLETE ✅
+
+**Export System Deliverables:**
+- ✅ HTML generator with all block types
+- ✅ Markdown generator with inline formatting conversion
+- ✅ ZIP bundler with optimized images and theme CSS
+- ✅ One-click export button in editor
+- ✅ Download utility for browser file download
+- ✅ 224 tests passing
+
+#### Next Priority: CONTENT PUBLISHING (Phase 5)
+
+**The local writing experience is complete!** The app can:
+- Create, edit, and manage blog posts
+- Store images with optimization
+- Apply themes with live preview
+- Export to ZIP with HTML, Markdown, images, and CSS
+
+**Now users need to publish their content online.** The Write Local *app* stays local (that's the whole point!). Phase 5 is about letting users publish their *blog content* to hosting platforms.
+
+**What to Build:**
+1. Publish modal UI (platform selection, progress feedback)
+2. Platform integrations (Netlify, Vercel, GitHub Pages APIs)
+3. OAuth authentication flows
+4. Use MSW to mock API responses in tests
+
+**Post-Publishing MVP:**
+- Keyboard shortcuts
+- Additional themes
+- Documentation
+
+---
+
+### 2026-01-16 (Continued): Netlify Publishing Complete
+
+#### Netlify Publishing Implementation
+
+**Phase 5 core functionality implemented with TDD:**
+
+1. **MSW Test Infrastructure** (`tests/mocks/handlers.js`, `tests/mocks/server.js`)
+   - Mock Netlify API responses for all endpoints
+   - Server lifecycle hooks in `tests/setup.js`
+   - Enables reliable testing without hitting real API
+
+2. **Auth Storage** (`src/publisher/auth-storage.js`)
+   - Store/retrieve/delete OAuth tokens in IndexedDB
+   - Platform-agnostic design (supports future Vercel/GitHub)
+   - 5 tests passing
+
+3. **Netlify OAuth** (`src/publisher/netlify-oauth.js`)
+   - Popup-based OAuth flow with state parameter for CSRF protection
+   - Token extraction from URL hash (implicit grant)
+   - 6 tests passing
+
+4. **Netlify API Client** (`src/publisher/netlify-api.js`)
+   - `listSites()` - Get user's existing Netlify sites
+   - `createSiteWithDeploy()` - Create new site with ZIP deploy
+   - `deployToSite()` - Deploy to existing site
+   - `waitForDeployReady()` - Poll until deploy completes
+   - **CORS workaround:** Netlify API returns duplicate `Access-Control-Allow-Origin` headers which browsers reject. Implemented detection and recovery by checking if the resource was created despite the error.
+   - 8 tests passing
+
+5. **Deploy Service** (`src/publisher/deploy-service.js`)
+   - Orchestrates the full publish workflow
+   - Uses `createExportBundle()` to generate ZIP
+   - Handles new site creation or deploy to existing site
+   - Progress callbacks for UI feedback
+   - 5 tests passing
+
+6. **Publish View** (`src/components/publish-view.js`)
+   - "Connect to Netlify" button with OAuth flow
+   - Site selector dropdown for existing sites
+   - "Create new site" option
+   - Publishing progress indicator
+   - Success state with live URL link
+   - Error handling with retry option
+   - Marks post as published after success
+   - 13 tests passing
+
+#### Bug Fixes During Integration
+
+1. **`finalStatus.id` undefined in CORS recovery path**
+   - Problem: Variable wasn't defined when using CORS workaround
+   - Fix: Use `finalDeployId` variable initialized from `deployResult.id`
+
+2. **New site URL showing "undefined"**
+   - Problem: CORS recovery didn't include URL fields in deploy object
+   - Fix: Added `ssl_url`, `url`, `deploy_ssl_url` to returned deploy object
+
+3. **Alt text not appearing in published HTML**
+   - Problem: EditorJS stores alt text in `block.tunes.altText.alt`, but generators looked at `block.data.alt`
+   - Fix: Updated `html-generator.js` and `markdown-generator.js` to accept tunes parameter and extract alt from correct location
+
+4. **Theme not included in published content**
+   - Problem: Posts created with `theme: 'default'` but bundler only had 'minimal'/'modern'
+   - Fix: Updated bundler to check settings for default theme when post.theme is 'default'
+
+5. **Theme styles not loading on custom domain**
+   - Problem: CSS files loaded via `<link>` tags with `/src/themes/` paths didn't work on custom domain (writelocal.test vs localhost)
+   - Fix: Refactored theme engine to bundle CSS at build time using Vite's `?raw` import suffix and inject as `<style>` tags
+
+#### Theme Engine Refactor
+
+**Major change to `src/core/theme-engine.js`:**
+
+**Before:**
+```javascript
+// Dynamic <link> tag loading
+const link = document.createElement('link');
+link.href = `/src/themes/${themeName}.css`;
+document.head.appendChild(link);
+```
+
+**After:**
+```javascript
+// Bundled CSS with Vite ?raw imports
+import baseCSS from '../themes/base.css?raw';
+import minimalCSS from '../themes/minimal.css?raw';
+import modernCSS from '../themes/modern.css?raw';
+
+// Inject as <style> tags
+const style = document.createElement('style');
+style.setAttribute('data-theme', themeName);
+style.textContent = themeCSS;
+document.head.appendChild(style);
+```
+
+**Benefits:**
+- Works regardless of domain or server configuration
+- CSS bundled into JavaScript at build time
+- No runtime network requests for themes
+- Themes work in deployed/exported content
+
+**Test Setup Update:**
+- Added `vi.mock()` calls in `tests/setup.js` for `?raw` CSS imports
+- Theme engine tests now pass with mocked CSS content
+
+#### Files Created
+
+**Publisher Module:**
+- `src/publisher/auth-storage.js` + `.test.js` - Token management
+- `src/publisher/netlify-oauth.js` + `.test.js` - OAuth flow
+- `src/publisher/netlify-api.js` + `.test.js` - API client
+- `src/publisher/deploy-service.js` + `.test.js` - Deployment orchestration
+
+**Components:**
+- `src/components/publish-view.js` + `.test.js` - Publish UI
+
+**Test Infrastructure:**
+- `tests/mocks/handlers.js` - MSW request handlers
+- `tests/mocks/server.js` - MSW server setup
+
+#### Files Modified
+
+- `src/main.js` - Added /publish route and Publish button
+- `src/core/theme-engine.js` - Refactored to use bundled CSS
+- `src/core/theme-engine.test.js` - Updated for new implementation
+- `src/exporter/html-generator.js` - Alt text from tunes
+- `src/exporter/markdown-generator.js` - Alt text from tunes
+- `src/exporter/bundler.js` - Get theme from settings
+- `tests/setup.js` - Added MSW lifecycle + CSS mocks
+- `index.html` - Publish button in toolbar
+- `.env.example` - Added `VITE_NETLIFY_CLIENT_ID`
+
+#### Known Limitations & Future Work
+
+**1. Themes are currently global, not per-post**
+- Current: All posts use the default theme from settings
+- Needed: Per-post theme selection stored in post record
+- Architecture: Need to distinguish "global settings" vs "post-specific settings"
+
+**2. Each publish creates a separate Netlify site**
+- Current: Publishing a post creates a new site (or deploys to an existing one)
+- Needed: A "blog" concept where multiple posts are published to a single site
+- Architecture considerations:
+  - Index page listing all published posts
+  - Shared navigation/layout across posts
+  - RSS feed generation
+  - Sitemap generation
+  - URL structure: `mysite.netlify.app/post-slug/`
+
+**3. CORS workaround is fragile**
+- Netlify's API returns duplicate `Access-Control-Allow-Origin` headers
+- Current workaround: Catch error, wait, check if resource was created
+- Better solution: Netlify to fix their API headers
+
+#### Current Capabilities
+
+**What Works:**
+1. ✅ Connect to Netlify via OAuth
+2. ✅ List existing Netlify sites
+3. ✅ Create new site with published post
+4. ✅ Deploy to existing site
+5. ✅ Progress indicator during publishing
+6. ✅ Success message with live URL
+7. ✅ Post marked as "published" after success
+8. ✅ Theme styles included in published HTML
+9. ✅ Alt text included in published images
+10. ✅ All 261 tests passing
+
+**What's Missing:**
+1. ❌ Multi-post blog (single site with multiple posts)
+2. ❌ Per-post theme selection
+3. ❌ Vercel integration
+4. ❌ GitHub Pages integration
+5. ❌ Index page generation
+6. ❌ RSS feed generation
 
 ---
 

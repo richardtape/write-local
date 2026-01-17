@@ -11,22 +11,28 @@
   --color-accent: #0066cc;
   --color-border: #e0e0e0;
 
-  /* Typography Scale (Minor Third: 1.2 ratio) */
-  --font-size-base: 1rem;      /* 16px */
-  --font-size-sm: 0.833rem;    /* 13.33px */
-  --font-size-lg: 1.2rem;      /* 19.2px */
-  --font-size-xl: 1.44rem;     /* 23.04px */
-  --font-size-2xl: 1.728rem;   /* 27.65px */
-  --font-size-3xl: 2.074rem;   /* 33.18px */
-  --font-size-4xl: 2.488rem;   /* 39.81px */
+  /* Responsive Typography Scale (Minor Third: 1.2 ratio)
+   * Using clamp(min, preferred, max) for fluid scaling
+   * Scales smoothly from mobile (320px) to desktop (1200px+)
+   */
+  --font-size-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);          /* 16px → 18px */
+  --font-size-sm: clamp(0.833rem, 0.75rem + 0.42vw, 0.94rem);       /* 13.3px → 15px */
+  --font-size-lg: clamp(1.2rem, 1.08rem + 0.6vw, 1.35rem);          /* 19.2px → 21.6px */
+  --font-size-xl: clamp(1.44rem, 1.296rem + 0.72vw, 1.62rem);       /* 23px → 26px */
+  --font-size-2xl: clamp(1.728rem, 1.555rem + 0.864vw, 1.944rem);   /* 27.6px → 31.1px */
+  --font-size-3xl: clamp(2.074rem, 1.866rem + 1.037vw, 2.333rem);   /* 33.2px → 37.3px */
+  --font-size-4xl: clamp(2.488rem, 2.239rem + 1.244vw, 2.799rem);   /* 39.8px → 44.8px */
 
-  /* Spacing (based on type scale) */
-  --space-xs: 0.5rem;
-  --space-sm: 0.75rem;
-  --space-md: 1rem;
-  --space-lg: 1.5rem;
-  --space-xl: 2rem;
-  --space-2xl: 3rem;
+  /* Responsive Spacing (scales with viewport)
+   * Smaller on mobile for efficient use of space
+   * Larger on desktop for comfortable reading
+   */
+  --space-xs: clamp(0.4rem, 0.35rem + 0.25vw, 0.5rem);              /* 6.4px → 8px */
+  --space-sm: clamp(0.625rem, 0.5rem + 0.625vw, 0.875rem);          /* 10px → 14px */
+  --space-md: clamp(0.875rem, 0.75rem + 0.625vw, 1.125rem);         /* 14px → 18px */
+  --space-lg: clamp(1.25rem, 1rem + 1.25vw, 1.75rem);               /* 20px → 28px */
+  --space-xl: clamp(1.75rem, 1.5rem + 1.25vw, 2.25rem);             /* 28px → 36px */
+  --space-2xl: clamp(2.5rem, 2rem + 2.5vw, 3.5rem);                 /* 40px → 56px */
 
   /* Fonts */
   --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -38,8 +44,17 @@
   --line-height-normal: 1.5;
   --line-height-loose: 1.7;
 
-  /* Content Width */
-  --content-max-width: 65ch;
+  /* Responsive Content Width
+   * Uses character-based width for optimal readability
+   * Falls back to viewport width minus padding on narrow screens
+   */
+  --content-max-width: min(65ch, calc(100vw - 2rem));
+
+  /* Responsive Content Padding
+   * Less padding on mobile to maximize content area
+   * More generous padding on desktop
+   */
+  --content-padding: clamp(1rem, 2vw + 0.5rem, 2rem);               /* 16px → 32px */
 }
 
 /**
@@ -55,7 +70,7 @@
   line-height: var(--line-height-normal);
   max-width: var(--content-max-width);
   margin: 0 auto;
-  padding: var(--space-xl);
+  padding: var(--content-padding);
 }
 
 /* Headings */
@@ -154,4 +169,23 @@
 
 .post-content a:hover {
   opacity: 0.8;
+}
+
+/* Title Input (for editor) */
+.post-content #post-title {
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-4xl);
+  font-weight: 700;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  border: none;
+  outline: none;
+  padding: 0;
+  margin-bottom: var(--space-lg);
+  width: 100%;
+}
+
+.post-content #post-title::placeholder {
+  color: var(--color-text-light);
+  opacity: 0.6;
 }

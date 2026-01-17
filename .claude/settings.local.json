@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm create:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebSearch",
+      "WebFetch(domain:developers.netlify.com)"
     ]
   }
 }
