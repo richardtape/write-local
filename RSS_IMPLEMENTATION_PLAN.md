@@ -19,10 +19,11 @@ Add automatic RSS feed generation to WriteLocal, similar to the automatic archiv
   - Pros: Never changes even if slug changes
   - Cons: Not a clickable URL
 
-**Decision**: Use **post URL as GUID** with `isPermaLink="true"`
-- More standard practice in RSS feeds
-- Simpler for users to understand
-- **Recommendation**: Consider preventing slug changes after a post is published, OR warn users that changing slug creates a new GUID
+**Decision**: Use **post ID as GUID** with `isPermaLink="false"`
+- **Rationale**: Allows users complete flexibility to change post slugs without breaking RSS readers
+- GUID remains stable even when title/slug changes
+- Users can safely rename/reorganize their content
+- `<link>` element provides the actual URL (which can change)
 
 ### 2. Handling Post Updates
 
@@ -167,7 +168,7 @@ function generateRSSItem(post, siteConfig)
     <item>
       <title>My First Post</title>
       <link>https://myblog.com/my-first-post/</link>
-      <guid isPermaLink="true">https://myblog.com/my-first-post/</guid>
+      <guid isPermaLink="false">urn:uuid:abc123def456</guid>
       <pubDate>Mon, 01 Jan 2024 10:00:00 GMT</pubDate>
       <atom:updated>2024-01-15T14:30:00Z</atom:updated>
       <description><![CDATA[This is an excerpt from my first post with about 50 words...]]></description>
@@ -247,7 +248,8 @@ describe('RSS Generator', () => {
     // Item metadata
     it('sets item title from post title')
     it('sets item link to post URL')
-    it('sets guid to post URL with isPermaLink=true')
+    it('sets guid to post ID with isPermaLink=false')
+    it('formats guid as urn:uuid:[postId]')
     it('formats pubDate as RFC 822')
     it('includes atom:updated if post was modified')
     it('omits atom:updated if publishedAt === updatedAt')
@@ -509,16 +511,15 @@ Once implemented, test with real RSS readers:
 
 **Scenario**: User changes post slug after publishing.
 
-**Current behavior**: GUID changes (URL-based GUID).
+**Behavior**: No issue! GUID remains stable (uses post ID).
 
-**Impact**: RSS readers will show it as a NEW post (duplicate).
+**Impact**: RSS readers will recognize it as the same post with an updated URL.
 
-**Options**:
-1. Accept this behavior (document it)
-2. Warn user when changing slug of published post
-3. Switch to ID-based GUID (`isPermaLink="false"`)
-
-**Recommendation**: Start with Option 1 (document), consider Option 2 for UX improvement later.
+**Benefits**:
+- Users can safely rename posts
+- Reorganize content structure
+- Fix typos in URLs
+- No duplicates in feed readers
 
 ### 4. Very Long Content
 
