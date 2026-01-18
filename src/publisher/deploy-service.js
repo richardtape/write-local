@@ -192,6 +192,7 @@ export async function publishSiteToNetlify(siteId, options = {}) {
     updateData.platform = 'netlify';
     updateData.platformSiteId = resultSiteId;
     updateData.platformUrl = resultUrl;
+    updateData.siteUrl = resultUrl; // For RSS feed generation
   }
 
   await updateSite(siteId, updateData);

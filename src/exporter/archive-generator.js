@@ -76,12 +76,14 @@ function generatePostItem(post, includeExcerpt) {
  * @param {string} siteConfig.archiveTitle - Title for the archive page
  * @param {string} siteConfig.archiveTemplate - Template: 'simple-list' or 'list-with-excerpts'
  * @param {string} siteConfig.archiveTheme - Theme ID for styling
+ * @param {boolean} [siteConfig.includeRSSLink=false] - Whether to include RSS autodiscovery link
  * @returns {string} Complete HTML document
  */
 export function generateArchiveHTML(posts, siteConfig) {
   const {
     archiveTitle,
     archiveTemplate = 'simple-list',
+    includeRSSLink = false,
   } = siteConfig;
 
   const escapedTitle = escapeHTML(archiveTitle);
@@ -99,14 +101,18 @@ export function generateArchiveHTML(posts, siteConfig) {
     .map(post => generatePostItem(post, includeExcerpts))
     .join('\n');
 
+  // RSS autodiscovery link (only if feed will be generated)
+  const rssLink = includeRSSLink
+    ? '\n  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="./feed.xml">'
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapedTitle}</title>
-  <link rel="stylesheet" href="./css/archive.css">
-  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="./feed.xml">
+  <link rel="stylesheet" href="./css/archive.css">${rssLink}
 </head>
 <body>
   <article class="archive-content">
