@@ -85,7 +85,7 @@ export async function createSiteBundle(siteId, options = {}) {
     }
 
     // Generate post HTML
-    const postHTML = generatePostHTML(post, postTheme);
+    const postHTML = generatePostHTML(post, postTheme, !!site.siteUrl);
     zip.file(`${post.slug}/index.html`, postHTML);
   }
 
@@ -94,6 +94,7 @@ export async function createSiteBundle(siteId, options = {}) {
     archiveTitle: site.archiveTitle,
     archiveTemplate: site.archiveTemplate,
     archiveTheme: site.archiveTheme,
+    includeRSSLink: !!site.siteUrl, // Only include RSS link if feed will be generated
   });
   zip.file('index.html', archiveHTML);
 
@@ -151,9 +152,10 @@ export async function createSiteBundle(siteId, options = {}) {
  * Generate HTML document for a single post (in site context)
  * @param {Object} post - Post object
  * @param {string} themeName - Theme to use for this post
+ * @param {boolean} includeRSSLink - Whether to include RSS autodiscovery link
  * @returns {string} Complete HTML document
  */
-function generatePostHTML(post, themeName) {
+function generatePostHTML(post, themeName, includeRSSLink = false) {
   const title = escapeHTML(post.title || 'Untitled');
   const blocks = post.content?.blocks || [];
 
@@ -162,6 +164,11 @@ function generatePostHTML(post, themeName) {
     imagePathPrefix: '../images/',
   });
 
+  // RSS autodiscovery link (only if feed will be generated)
+  const rssLink = includeRSSLink
+    ? '\n  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="../feed.xml">'
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -169,8 +176,7 @@ function generatePostHTML(post, themeName) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <link rel="stylesheet" href="../css/post-base.css">
-  <link rel="stylesheet" href="../css/post-${themeName}.css">
-  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="../feed.xml">
+  <link rel="stylesheet" href="../css/post-${themeName}.css">${rssLink}
 </head>
 <body>
   <article class="post-content">
