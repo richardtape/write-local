@@ -14,6 +14,7 @@ import { getImagesByPost } from '../core/image-storage.js';
 import { optimizeImage } from '../utils/image-optimizer.js';
 import { renderBlocksToHTML } from './html-generator.js';
 import { generateArchiveHTML } from './archive-generator.js';
+import { generateRSSFeed } from './rss-generator.js';
 
 // Import CSS files as raw strings using Vite's ?raw suffix
 // Post CSS
@@ -96,6 +97,19 @@ export async function createSiteBundle(siteId, options = {}) {
   });
   zip.file('index.html', archiveHTML);
 
+  // Generate RSS feed (only if site has been deployed and has a URL)
+  if (site.siteUrl) {
+    const rssFeed = generateRSSFeed(posts, {
+      siteUrl: site.siteUrl,
+      name: site.name,
+      blogDescription: site.blogDescription || '',
+      feedAuthor: site.feedAuthor || null,
+      feedLanguage: site.feedLanguage || 'en-us',
+      feedIncludeFullContent: site.feedIncludeFullContent || false,
+    });
+    zip.file('feed.xml', rssFeed);
+  }
+
   // Add archive CSS (combined base + theme)
   const archiveTheme = site.archiveTheme || DEFAULT_THEME;
   const archiveCSS = combineArchiveCSS(archiveTheme);
@@ -156,6 +170,7 @@ function generatePostHTML(post, themeName) {
   <title>${title}</title>
   <link rel="stylesheet" href="../css/post-base.css">
   <link rel="stylesheet" href="../css/post-${themeName}.css">
+  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="../feed.xml">
 </head>
 <body>
   <article class="post-content">
