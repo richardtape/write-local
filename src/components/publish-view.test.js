@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { db, createPost, setStatus, getPost } from '../core/storage.js';
+import { db, createPost, setStatus, getPost, createSite, updateSite, listSites as listLocalSites } from '../core/storage.js';
 import { saveToken, deleteToken } from '../publisher/auth-storage.js';
 import { renderPublishView } from './publish-view.js';
 
@@ -23,6 +23,14 @@ vi.mock('../publisher/deploy-service.js', () => ({
       deployId: 'deploy-456',
     })
   ),
+  publishSiteToNetlify: vi.fn(() =>
+    Promise.resolve({
+      success: true,
+      url: 'https://test-site.netlify.app',
+      siteId: 'site-123',
+      deployId: 'deploy-456',
+    })
+  ),
   isAuthenticated: vi.fn(() => Promise.resolve(false)),
 }));
 
@@ -36,7 +44,7 @@ vi.mock('../publisher/netlify-api.js', () => ({
   ),
 }));
 
-import { publishToNetlify, isAuthenticated } from '../publisher/deploy-service.js';
+import { publishToNetlify, publishSiteToNetlify, isAuthenticated } from '../publisher/deploy-service.js';
 import { listSites } from '../publisher/netlify-api.js';
 import { generateAuthUrl, openAuthPopup } from '../publisher/netlify-oauth.js';
 
@@ -155,40 +163,74 @@ describe('PublishView Component', () => {
     });
   });
 
-  describe('site selection', () => {
-    it('loads existing sites when authenticated', async () => {
+  describe('blog site flow', () => {
+    it('shows create blog UI when no local site exists', async () => {
       isAuthenticated.mockResolvedValue(true);
       await saveToken('netlify', { accessToken: 'valid-token' });
 
       await renderPublishView(container, { router: mockRouter, postId: testPostId });
 
-      expect(listSites).toHaveBeenCalled();
-      const select = container.querySelector('#netlify-site-select');
-      expect(select).not.toBeNull();
+      // Should show "Create Your Blog" UI
+      expect(container.textContent).toContain('Create Your Blog');
+      const blogNameInput = container.querySelector('#blog-name-input');
+      expect(blogNameInput).not.toBeNull();
+      expect(blogNameInput.value).toBe('My Blog');
     });
 
-    it('shows create new option in site selector', async () => {
+    it('shows publish button with create blog text when no site exists', async () => {
       isAuthenticated.mockResolvedValue(true);
       await saveToken('netlify', { accessToken: 'valid-token' });
 
       await renderPublishView(container, { router: mockRouter, postId: testPostId });
 
-      const select = container.querySelector('#netlify-site-select');
-      const options = select.querySelectorAll('option');
-      const newOption = Array.from(options).find(o => o.value === 'new');
-      expect(newOption).not.toBeNull();
-      expect(newOption.textContent).toContain('Create new site');
+      const publishBtn = container.querySelector('[data-action="publish"]');
+      expect(publishBtn).not.toBeNull();
+      expect(publishBtn.textContent).toContain('Create Blog & Publish');
     });
 
-    it('lists existing sites in selector', async () => {
+    it('shows publish options when local site exists', async () => {
       isAuthenticated.mockResolvedValue(true);
       await saveToken('netlify', { accessToken: 'valid-token' });
 
+      // Create a local site
+      await createSite({
+        name: 'My Test Blog',
+        archiveTitle: 'My Test Blog',
+        archiveTemplate: 'simple-list',
+        archiveTheme: 'minimal',
+      });
+
       await renderPublishView(container, { router: mockRouter, postId: testPostId });
 
-      const select = container.querySelector('#netlify-site-select');
-      expect(select.innerHTML).toContain('my-blog');
-      expect(select.innerHTML).toContain('other-site');
+      // Should show "Publish to Your Blog" UI
+      expect(container.textContent).toContain('Publish to Your Blog');
+      expect(container.textContent).toContain('My Test Blog');
+    });
+
+    it('shows blog info when site has been published', async () => {
+      isAuthenticated.mockResolvedValue(true);
+      await saveToken('netlify', { accessToken: 'valid-token' });
+
+      // Create a site
+      const site = await createSite({
+        name: 'My Published Blog',
+        archiveTitle: 'Welcome',
+        archiveTemplate: 'simple-list',
+        archiveTheme: 'minimal',
+      });
+
+      // Update with platform details (as would happen after publishing)
+      await updateSite(site.id, {
+        platform: 'netlify',
+        platformSiteId: 'netlify-123',
+        platformUrl: 'https://my-blog.netlify.app',
+        lastPublishedAt: Date.now() - 3600000, // 1 hour ago
+      });
+
+      await renderPublishView(container, { router: mockRouter, postId: testPostId });
+
+      expect(container.textContent).toContain('https://my-blog.netlify.app');
+      expect(container.textContent).toContain('Last published');
     });
   });
 
@@ -198,20 +240,29 @@ describe('PublishView Component', () => {
       await saveToken('netlify', { accessToken: 'valid-token' });
     });
 
-    it('publish button triggers deployment', async () => {
+    it('publish button triggers deployment with new site creation', async () => {
       await renderPublishView(container, { router: mockRouter, postId: testPostId });
+
+      // Should show create blog UI
+      const blogNameInput = container.querySelector('#blog-name-input');
+      blogNameInput.value = 'My New Blog';
 
       const publishBtn = container.querySelector('[data-action="publish"]');
       publishBtn.click();
 
-      // Wait for publishToNetlify to be called
+      // Wait for publishSiteToNetlify to be called
       await vi.waitFor(() => {
-        expect(publishToNetlify).toHaveBeenCalledWith(testPostId, expect.any(Object));
+        expect(publishSiteToNetlify).toHaveBeenCalled();
       }, { timeout: 1000 });
+
+      // Verify a site was created
+      const sites = await listLocalSites();
+      expect(sites.length).toBe(1);
+      expect(sites[0].name).toBe('My New Blog');
     });
 
     it('shows progress during publishing', async () => {
-      publishToNetlify.mockImplementation(() => {
+      publishSiteToNetlify.mockImplementation(() => {
         return new Promise(resolve => setTimeout(() => resolve({
           success: true,
           url: 'https://test.netlify.app',
@@ -225,12 +276,12 @@ describe('PublishView Component', () => {
 
       // Should show publishing state
       await new Promise(resolve => setTimeout(resolve, 10));
-      expect(container.textContent).toMatch(/Publishing|Uploading|Generating/i);
+      expect(container.textContent).toMatch(/Publishing|Uploading|Generating|Creating|Linking|Setting up/i);
     });
 
     it('shows URL on success', async () => {
       // Reset mock to ensure consistent behavior
-      publishToNetlify.mockResolvedValue({
+      publishSiteToNetlify.mockResolvedValue({
         success: true,
         url: 'https://my-site.netlify.app',
         siteId: 'site-123',
@@ -243,9 +294,9 @@ describe('PublishView Component', () => {
       publishBtn.click();
 
       // Wait for publish to complete - need to wait for multiple async operations
-      // (click handler -> startPublishing -> publishToNetlify -> DOM update)
+      // (click handler -> startPublishing -> publishSiteToNetlify -> DOM update)
       await vi.waitFor(() => {
-        expect(container.textContent).toContain('Published');
+        expect(container.textContent.toLowerCase()).toContain('published');
         expect(container.querySelector('a.site-url')).not.toBeNull();
       }, { timeout: 1000 });
 
@@ -255,7 +306,7 @@ describe('PublishView Component', () => {
     });
 
     it('marks post as published on success', async () => {
-      publishToNetlify.mockResolvedValue({
+      publishSiteToNetlify.mockResolvedValue({
         success: true,
         url: 'https://my-site.netlify.app',
         siteId: 'site-123',
@@ -273,7 +324,7 @@ describe('PublishView Component', () => {
 
       // Wait for publish to complete
       await vi.waitFor(() => {
-        expect(container.textContent).toContain('Published');
+        expect(container.textContent.toLowerCase()).toContain('published');
       }, { timeout: 1000 });
 
       // Verify post is now published
@@ -283,7 +334,7 @@ describe('PublishView Component', () => {
     });
 
     it('shows error message on failure', async () => {
-      publishToNetlify.mockRejectedValue(new Error('Deploy failed: test error'));
+      publishSiteToNetlify.mockRejectedValue(new Error('Deploy failed: test error'));
 
       await renderPublishView(container, { router: mockRouter, postId: testPostId });
 
@@ -296,38 +347,43 @@ describe('PublishView Component', () => {
       }, { timeout: 1000 });
     });
 
-    it('passes siteId when existing site selected', async () => {
+    it('links post to site when publishing', async () => {
       await renderPublishView(container, { router: mockRouter, postId: testPostId });
-
-      // Select existing site
-      const select = container.querySelector('#netlify-site-select');
-      select.value = 'site-1';
 
       const publishBtn = container.querySelector('[data-action="publish"]');
       publishBtn.click();
 
+      // Wait for publish to complete
       await vi.waitFor(() => {
-        expect(publishToNetlify).toHaveBeenCalledWith(
-          testPostId,
-          expect.objectContaining({ siteId: 'site-1' })
-        );
+        expect(publishSiteToNetlify).toHaveBeenCalled();
       }, { timeout: 1000 });
+
+      // Verify post is linked to the created site
+      const post = await getPost(testPostId);
+      expect(post.siteId).not.toBeNull();
+
+      const sites = await listLocalSites();
+      expect(sites[0].id).toBe(post.siteId);
     });
 
-    it('passes null siteId when creating new site', async () => {
-      await renderPublishView(container, { router: mockRouter, postId: testPostId });
+    it('publishes to existing site when site exists', async () => {
+      // Create a local site first
+      const site = await createSite({
+        name: 'Existing Blog',
+        archiveTitle: 'Existing Blog',
+        archiveTemplate: 'simple-list',
+        archiveTheme: 'minimal',
+      });
 
-      // Select "create new"
-      const select = container.querySelector('#netlify-site-select');
-      select.value = 'new';
+      await renderPublishView(container, { router: mockRouter, postId: testPostId });
 
       const publishBtn = container.querySelector('[data-action="publish"]');
       publishBtn.click();
 
       await vi.waitFor(() => {
-        expect(publishToNetlify).toHaveBeenCalledWith(
-          testPostId,
-          expect.objectContaining({ siteId: null })
+        expect(publishSiteToNetlify).toHaveBeenCalledWith(
+          site.id,
+          expect.any(Object)
         );
       }, { timeout: 1000 });
     });

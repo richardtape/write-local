@@ -221,8 +221,8 @@ async function renderPublishOptions(content, { postId, router, post, site }) {
       <h3 style="margin: 1.5rem 0 0.5rem;">Publish to Your Blog</h3>
 
       <div style="background: #f5f5f5; padding: 1rem; border-radius: 6px; margin: 1rem 0;">
-        <div style="font-weight: 500; margin-bottom: 0.5rem;">${site.name}</div>
-        ${site.platformUrl ? `<div style="font-size: 0.85rem; color: #666;">${site.platformUrl}</div>` : ''}
+        <div style="font-weight: 500; margin-bottom: 0.5rem;">${escapeHTML(site.name)}</div>
+        ${site.platformUrl ? `<div style="font-size: 0.85rem; color: #666;">${escapeHTML(site.platformUrl)}</div>` : ''}
         ${site.lastPublishedAt ? `<div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">Last published: ${formatDate(site.lastPublishedAt)}</div>` : ''}
       </div>
 
