@@ -106,6 +106,7 @@ export function generateArchiveHTML(posts, siteConfig) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapedTitle}</title>
   <link rel="stylesheet" href="./css/archive.css">
+  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="./feed.xml">
 </head>
 <body>
   <article class="archive-content">
